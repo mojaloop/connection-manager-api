@@ -56,8 +56,6 @@ if [ "$1" = 'server' ]; then
     shift
     set -- vault server \
         -config="$VAULT_CONFIG_DIR" \
-        -dev-root-token-id="$VAULT_DEV_ROOT_TOKEN_ID" \
-        -dev-listen-address="${VAULT_DEV_LISTEN_ADDRESS:-"0.0.0.0:8200"}" \
         "$@"
 elif [ "$1" = 'version' ]; then
     # This needs a special case because there's no help output.
@@ -70,22 +68,8 @@ fi
 
 # If we are running Vault, make sure it executes as the proper user.
 if [ "$1" = 'vault' ]; then
-    if [ -z "$SKIP_CHOWN" ]; then
-        # If the config dir is bind mounted then chown it
-        if [ "$(stat -c %u /vault/config)" != "$(id -u vault)" ]; then
-            chown -R vault:vault /vault/config || echo "Could not chown /vault/config (may not have appropriate permissions)"
-        fi
-
-        # If the logs dir is bind mounted then chown it
-        if [ "$(stat -c %u /vault/logs)" != "$(id -u vault)" ]; then
-            chown -R vault:vault /vault/logs
-        fi
-
-        # If the file dir is bind mounted then chown it
-        if [ "$(stat -c %u /vault/file)" != "$(id -u vault)" ]; then
-            chown -R vault:vault /vault/file
-        fi
-    fi
+    # Ensure vault user owns the data directories
+    chown -R vault:vault /vault/data /vault/creds
 
     if [ -z "$SKIP_SETCAP" ]; then
         # Allow mlock to avoid swapping Vault memory to disk
@@ -103,74 +87,4 @@ if [ "$1" = 'vault' ]; then
     fi
 fi
 
-"$@" &
-
-
-sleep 3
-
-export VAULT_TOKEN=$VAULT_DEV_ROOT_TOKEN_ID
-
-# Run the vault status command and capture the output
-output=$(vault status 2>/dev/null)
-
-# Use grep with a regex to check if 'Initialized' is followed by 'true'
-#if echo "$output" | grep -qE '^Initialized\s+true$'; then
-#    echo "Vault is already initialized."
-#    touch /tmp/service_started
-#
-#    tail -f /dev/null
-#    exit 0
-#fi
-
-vault auth enable approle
-vault write auth/approle/role/my-role secret_id_ttl=1000m token_ttl=1000m token_max_ttl=1000m
-vault read -field role_id auth/approle/role/my-role/role-id > /vault/tmp/role-id
-vault write -field secret_id -f auth/approle/role/my-role/secret-id > /vault/tmp/secret-id
-# ROLE_ID=$(vault read -field role_id auth/approle/role/my-role/role-id)
-# SECRET_ID=$(vault write -field secret_id -f auth/approle/role/my-role/secret-id)
-vault secrets enable -path=pki pki
-vault secrets enable -path=secrets kv
-vault secrets tune -max-lease-ttl=97600h pki
-# vault write -field=certificate pki/root/generate/internal \
-#         common_name="example.com" \
-#         ttl=97600h
-vault write pki/config/urls \
-    issuing_certificates="http://127.0.0.1:8233/v1/pki/ca" \
-    crl_distribution_points="http://127.0.0.1:8233/v1/pki/crl"
-vault write pki/roles/example.com allowed_domains=example.com allow_subdomains=true allow_any_name=true allow_localhost=true enforce_hostnames=false max_ttl=720h
-
-tee policy.hcl <<EOF
-# List, create, update, and delete key/value secrets
-path "secrets/*"
-{
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-path "kv/*"
-{
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-path "pki/*"
-{
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-path "pki_int/*"
-{
-  capabilities = ["create", "read", "update", "delete", "list", "sudo"]
-}
-
-EOF
-
-vault policy write test-policy policy.hcl
-
-vault write auth/approle/role/my-role policies=test-policy ttl=1h
-
-vault secrets enable -path=pki_int pki
-vault secrets tune -max-lease-ttl=43800h pki_int
-vault write pki_int/roles/example.com allowed_domains=example.com allow_subdomains=true allow_any_name=true allow_localhost=true enforce_hostnames=false max_ttl=600h
-
-touch /tmp/service_started
-
-tail -f /dev/null
+exec "$@"

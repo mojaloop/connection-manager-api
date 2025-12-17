@@ -1,0 +1,10 @@
+{
+  "subject": {
+    "CN": "Hub TLS Client",
+    "OU": "IT Department",
+    "O": "Hub Organization",
+    "L": "Seattle",
+    "C": "US",
+    "ST": "Washington"
+  }
+}

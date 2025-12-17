@@ -34,7 +34,7 @@ Internally, there's an "id" attribute which is the PK:
 
 but this is NOT seen by the user. They use the dfspId attribute on the operations URLs, as in:
 
-`POST "http://localhost:3001/api/environments/2/dfsps/DFSP1/enrollments/inbound"`
+`POST "http://mcm.localhost/api/environments/2/dfsps/DFSP1/enrollments/inbound"`
 
 
 About the security groups:

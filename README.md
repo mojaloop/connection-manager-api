@@ -29,7 +29,7 @@ The system uses OpenID Connect authentication, which is a provider-agnostic appr
 |OPENID_DISCOVERY_URL|OpenID Connect discovery URL|
 |OPENID_CLIENT_ID|Client ID for OpenID authentication|
 |OPENID_CLIENT_SECRET|Client secret for OpenID authentication|
-|OPENID_REDIRECT_URI|Redirect URI for OpenID authentication|http://localhost:3001/api/auth/callback
+|OPENID_REDIRECT_URI|Redirect URI for OpenID authentication|http://mcm.localhost/api/auth/callback
 |OPENID_JWT_COOKIE_NAME|Cookie name for storing the JWT token|MCM-API_ACCESS_TOKEN
 |OPENID_EVERYONE_ROLE|Role assigned to all authenticated users|everyone
 |OPENID_MTA_ROLE|DFSP Admin role mapping for OpenID|mta
@@ -49,102 +49,142 @@ P12_PASS_PHRASE="choose your own password" npm start
 
 The default config requires a `mysql` db running on the default port.
 
-Once running, you can access the [Swagger UI interface](http://localhost:3001/docs)
+Once running, you can access the [Swagger UI interface](http://mcm.localhost/api/docs)
 
 ## Running the server + db + web UI locally while developing
 
-The API server requires a mysql db. There's also a Web UI [https://github.com/modusbox/connection-manager-ui](https://github.com/modusbox/connection-manager-ui).
-
 To run them together, you can use the following setup:
 
-- Clone this repo and the Web UI repo at the same level
-- Use the `docker-compose` config in this repo to run a mysql DB, the WebUI and the API server
+- Clone this repo
+- Use the `docker-compose` config in this repo to run a mysql DB, Vault, Keycloak, the WebUI and the API server
 
 ```bash
-mkdir modusbox
-cd modusbox
-git clone https://github.com/modusbox/connection-manager-ui
+mkdir mojaloop
+cd mojaloop
 git clone https://github.com/modusbox/connection-manager-api
-cd connection-manager-api/docker
-docker-compose build
-docker-compose up
+cd connection-manager-api
+docker compose --profile functional --profile dev up -d --wait
 ```
 
-Once the docker containers are confirmed to be stable and up, you will need to create the initial HUB environment. From a new terminal
- session, execute the following;
+### Accessing Services
 
- ```bash
-curl -X POST "http://localhost:3001/api/environments" -H "accept: application/json" -H "Content-Type: application/json" -d "{ \"name\": \"DEV\", \"defaultDN\": { \"CN\": \"tes1.centralhub.modusbox.live\", \"O\": \"Modusbox\", \"OU\": \"MCM\" }}"
- ```
+The stack includes Traefik for local DNS routing. All services are accessible via `*.mcm.localhost` domains:
 
-The UI 'localhost' can now be opened in your local browser.
+| Service | URL | Description |
+|---------|-----|-------------|
+| MCM UI | http://mcm.localhost | Web UI |
+| MCM API | http://mcm.localhost/api | API Server |
+| Vault UI | http://vault.mcm.localhost | Vault UI |
+| Keycloak | http://keycloak.mcm.localhost | Keycloak Admin Console |
+| Mailpit | http://mailpit.mcm.localhost | Email Testing UI |
+| Traefik Dashboard | http://localhost:8090 | Traefik Dashboard |
 
-If you want to start the app with auth enabled:
+### Customizing Configuration
 
-1) create a local copy of `docker-compose-auth.yml` as in:
+You can customize the domain and ports by creating a `.env` file:
 
-`cp docker-compose-auth.yml docker-compose-auth.local.yml`
+```bash
+# .env
+COMPOSE_DOMAIN=myapp.localhost
+TRAEFIK_HTTP_PORT=8080
+DATABASE_PORT=3307
+```
 
-( `docker-compose-auth.local.yml` is git-ignored )
+This will change all services to use `*.myapp.localhost`, expose Traefik on port 8080, and MySQL on port 3307.
 
-1) Edit `docker-compose-auth.local.yml` and enter the security details.
+**Note**: If port 80 is already in use, set `TRAEFIK_HTTP_PORT` to an available port (e.g., 8080). Access services at `http://ui.myapp.localhost:8080`.
 
-1) Run the bundle with:
+### Running Multiple Instances
 
-`docker-compose build && docker-compose -f docker-compose.yml -f docker-compose-auth.local.yml up`
+To run multiple instances simultaneously:
+
+```bash
+# Instance 1 (default ports)
+COMPOSE_PROJECT_NAME=mcm1 COMPOSE_DOMAIN=mcm1.localhost docker compose up -d
+
+# Instance 2 (different MySQL port)
+COMPOSE_PROJECT_NAME=mcm2 COMPOSE_DOMAIN=mcm2.localhost DATABASE_PORT=3307 docker compose up -d
+```
+
+Access via:
+- Instance 1: `http://api.mcm1.localhost`, MySQL at `localhost:3306`
+- Instance 2: `http://api.mcm2.localhost`, MySQL at `localhost:3307`
+
+See [.env-example](./.env-example) for all available configuration options.
 
 ## Configuration
-
-There's a [Constants.js file](./src/constants/Constants.js) that pulls the values from the environment or uses defaults if not defined.
-
-Variables:
 
 |Environment variable|Description|Default Value
 :---|:---|:---
 | **MCM API server configuration**
-|PORT|mcm API HTTP port|3001
+|PORT|MCM API HTTP port|3001
+|CLIENT_URL|MCM UI URL|http://mcm.localhost
+|SWITCH_ID|Switch identifier (required)|
+|SWITCH_FQDN|Switch FQDN|switch.example.com
+| **Docker Compose configuration**
+|COMPOSE_DOMAIN|Domain for Traefik routing (docker-compose only)|mcm.localhost
 | **Authentication features**
-|OPENID_ENABLED|Enables support for OAuth2. 'TRUE' to enable| (disabled)
-|OPENID_ENABLE_2FA|Enables two-factor authentication 'TRUE' to enable| (disabled)
+|OPENID_ENABLED|Enable OpenID Connect authentication|false
+|OPENID_ENABLE_2FA|Enable two-factor authentication|false
+|OPENID_ALLOW_INSECURE|Allow insecure HTTPS for development|false
+|OPENID_DISCOVERY_URL|OpenID Connect discovery URL|
+|OPENID_CLIENT_ID|Client ID for OpenID authentication|
+|OPENID_CLIENT_SECRET|Client secret for OpenID authentication|
+|LOGIN_CALLBACK|OAuth callback URL|http://mcm.localhost/api/auth/callback
+|OPENID_AUDIENCE|JWT audience claim|connection-manager-api
+|OPENID_JWT_COOKIE_NAME|Cookie name for JWT token|MCM-API_ACCESS_TOKEN
+| **OpenID Connect groups/roles**
+|OPENID_APPLICATION_GROUP|Application group name|Application
+|OPENID_EVERYONE_GROUP|Authenticated users group|everyone
+|OPENID_MTA_GROUP|DFSP Admin group|MTA
+|OPENID_PTA_GROUP|HUB Admin group|PTA
+|OPENID_DFSP_GROUP|DFSP group|DFSP
 | **Session configuration**
-|SESSION_STORE_SECRET|Secret for encrypting session data|
-|SESSION_MAX_AGE|Session timeout in milliseconds|86400000 (24 hours)
-|SESSION_SAME_SITE|SameSite cookie setting|'strict'
-|SESSION_SECURE|Whether session cookies require HTTPS|true in production
-| **OAuth2 roles**
-|MTA_ROLE|DFSP Admin role|'Application/MTA'
-|PTA_ROLE|HUB Admin Role|'Application/PTA'
-|EVERYONE_ROLE|Authenticated users role|'Internal/everyone'
+|SESSION_STORE_SECRET|Secret for encrypting session data|connection_manager_session_secret
+|SESSION_COOKIE_SAME_SITE_STRICT|Use strict SameSite cookie setting|true
 | **Database configuration**
-|DATABASE_HOST|mysql host|localhost
-|DATABASE_PORT|mysql port|3306
-|DATABASE_USER|mysql user|mcm
-|DATABASE_PASSWORD|mysql password|mcm
-|DATABASE_SCHEMA|mysql schema|mcm
+|DATABASE_HOST|MySQL host|localhost
+|DATABASE_PORT|MySQL port (also used for docker-compose host mapping)|3306
+|DATABASE_USER|MySQL user|mcm
+|DATABASE_PASSWORD|MySQL password|mcm
+|DATABASE_SCHEMA|MySQL schema|mcm
 |DATABASE_SSL_ENABLED|Enable SSL for MySQL connection|false
 |DATABASE_SSL_VERIFY|Verify server certificate when using SSL|false
 |DATABASE_SSL_CA|CA certificate string for MySQL SSL|''
-|DB_RETRIES|Times the initial connection to the DB will be retried|10,
-|DB_CONNECTION_RETRY_WAIT_MILLISECONDS|Pause between retries|5000,
-|RUN_MIGRATIONS|If true, run db schema migration at startup. Can always be true as the schema creation is idempotent|true,
-|CURRENCY_CODES|Path to file containing all the supported currency codes|'./data/currencyCodes.json',
-|DATA_CONFIGURATION_FILE|Initial data configuration path. See specific doc|'./data/sampleConfiguration.json'
-| **MCM Internal Certificate Authority configuration**
-|P12_PASS_PHRASE|Pass phrase used to save the internal CA Key in the DB.|
-| **Support for self-signed certificates on OAuth Server and other TLS client connections**
-|EXTRA_CERTIFICATE_CHAIN_FILE_NAME|Extra trusted server certificate chain file name ( PEM-encoded, as explained in https://nodejs.org/api/tls.html#tls_tls_createsecurecontext_options )|
+|DB_RETRIES|Times the initial connection to the DB will be retried|10
+|DB_CONNECTION_RETRY_WAIT_MILLISECONDS|Pause between retries|1000
+|DB_POOL_SIZE_MAX|Maximum database connection pool size|10
+| **Vault PKI configuration**
+|VAULT_ENDPOINT|Vault server endpoint|http://127.0.0.1:8233
+|VAULT_AUTH_METHOD|Vault auth method (K8S or APP_ROLE)|APP_ROLE (required)
+|VAULT_ROLE_ID_FILE|Path to Vault role ID file|docker/vault/tmp/role-id
+|VAULT_ROLE_SECRET_ID_FILE|Path to Vault secret ID file|docker/vault/tmp/secret-id
+|VAULT_PKI_SERVER_ROLE|Vault PKI role for server certs|(required)
+|VAULT_PKI_CLIENT_ROLE|Vault PKI role for client certs|(required)
+|VAULT_SIGN_EXPIRY_HOURS|Certificate signing expiry in hours|43800
+|PRIVATE_KEY_LENGTH|RSA key length for certificates|4096
+|PRIVATE_KEY_ALGORITHM|Key algorithm|rsa
+|INTERNAL_CA_TTL|Internal CA certificate TTL|8760h
+|VAULT_MOUNT_PKI|Vault PKI mount path|pki
+|VAULT_MOUNT_INTERMEDIATE_PKI|Vault intermediate PKI mount path|pki_int
+|VAULT_MOUNT_KV|Vault KV mount path|secrets
+| **Certificate CSR parameters**
+|CLIENT_CSR_PARAMETERS|Path to client CSR parameters JSON file|
+|SERVER_CSR_PARAMETERS|Path to server CSR parameters JSON file|
+|CA_CSR_PARAMETERS|Path to CA CSR parameters JSON file|
+| **Support for self-signed certificates**
+|EXTRA_CERTIFICATE_CHAIN_FILE_NAME|Extra trusted server certificate chain file name|
 |EXTRA_ROOT_CERT_FILE_NAME|Extra trusted server root certificate file name|
-| **CFSSL**
-|CFSSL_VERSION|Expected CFSSL version to use. Should be updated to keep in sync with the cfssl development|1.3.4
-|CFSSL_COMMAND_PATH|cfssl command; it should be just cfssl if it's in the PATH or the full path|cfssl
 | **Keycloak Integration**
 |KEYCLOAK_ENABLED|Enable Keycloak integration for DFSP account creation|false
-|KEYCLOAK_BASE_URL|Base URL of the Keycloak server|http://localhost:8080
-|KEYCLOAK_DISCOVERY_URL|OpenID Connect discovery URL for Keycloak|http://localhost:8080/realms/dfsps/.well-known/openid-configuration
+|KEYCLOAK_BASE_URL|Base URL of the Keycloak server|http://keycloak.mcm.localhost
+|KEYCLOAK_DISCOVERY_URL|OpenID Connect discovery URL for Keycloak|http://keycloak.mcm.localhost/realms/dfsps/.well-known/openid-configuration
 |KEYCLOAK_ADMIN_CLIENT_ID|Client ID for Keycloak admin operations|connection-manager-client
 |KEYCLOAK_ADMIN_CLIENT_SECRET|Client secret for Keycloak admin operations|
 |KEYCLOAK_DFSPS_REALM|Keycloak realm for DFSP accounts|dfsps
-|KEYCLOAK_AUTO_CREATE_ACCOUNTS|Automatically create Keycloak accounts when DFSPs are created|**false** (disabled by default)
+|KEYCLOAK_AUTO_CREATE_ACCOUNTS|Automatically create Keycloak accounts when DFSPs are created|false
+| **Other features**
+|DFSP_WATCHER_ENABLED|Enable DFSP watcher service|false
 
 ## Testing
 

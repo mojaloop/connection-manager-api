@@ -21,10 +21,8 @@
  *       Miguel de Barros - miguel.debarros@modusbox.com                **
  ************************************************************************* */
 
-jest.setTimeout(999999)
-
-const { ApiHelper, MethodEnum, ApiHelperOptions } = require('../util/api-helper');
-const Config = require('../util/config');
+import { ApiHelper, MethodEnum, ApiHelperOptions } from '../util/api-helper';
+import Config from '../util/config';
 
 describe('MCM API Tests', () => {
 
@@ -40,12 +38,12 @@ describe('MCM API Tests', () => {
     email: `test${randomSeed}@example.com`
   }
 
-  const apiHelperOptions: typeof ApiHelperOptions = {};
-  if (Config.oauth2Issuer && Config.oauthClientKey && Config.oauthClientSecret){
-    apiHelperOptions.oauth = {
-      url: Config.oauth2Issuer,
-      clientId: Config.oauthClientKey,
-      clientSecret: Config.oauthClientSecret,
+  const apiHelperOptions: ApiHelperOptions = {};
+  if (Config.username && Config.password){
+    apiHelperOptions.login = {
+      username: Config.username,
+      password: Config.password,
+      baseUrl: Config.mcmEndpoint
     }
   }
 
@@ -83,6 +81,15 @@ describe('MCM API Tests', () => {
       // set the dfspId value
       dfspId = addDFSPResponse.id;
     }
+
+    // Test if we can generate credentials for the DFSP
+    const credentialsResponse = await apiHelper.sendRequest({
+      method: MethodEnum.POST,
+      url:`${Config.mcmEndpoint}/dfsps/${dfspId}/credentials`,
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
   });
 
   afterEach(() => {
