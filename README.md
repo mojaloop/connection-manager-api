@@ -1,6 +1,6 @@
 # Connection Manager API
 
-[![Release](https://github.com/modusbox/connection-manager-api/actions/workflows/releaseWorkflow.yml/badge.svg)](https://github.com/modusbox/connection-manager-api/actions/workflows/releaseWorkflow.yml)
+[![Release](https://github.com/mojaloop/connection-manager-api/actions/workflows/releaseWorkflow.yml/badge.svg)](https://github.com/mojaloop/connection-manager-api/actions/workflows/releaseWorkflow.yml)
 
 Connection Manager API is a component of the Mojaloop ecosystem that allows an administrator to manage the network configuration and PKI information for the Hub and a set of DFSPs.
 
@@ -61,9 +61,29 @@ To run them together, you can use the following setup:
 ```bash
 mkdir mojaloop
 cd mojaloop
-git clone https://github.com/modusbox/connection-manager-api
+git clone https://github.com/mojaloop/connection-manager-api
 cd connection-manager-api
-docker compose --profile functional --profile dev up -d --wait
+docker compose --profile full up -d --wait
+```
+
+### Docker Compose Profiles
+
+| Profile | API                  | UI        | Use case              |
+|---------|----------------------|-----------|-----------------------|
+| `ci`    | container (local)    | -         | CI/CD, running tests  |
+| `dev`   | proxy → host         | container | Local API development |
+| `full`  | container (official) | container | Full environment      |
+
+```bash
+# CI/CD (builds local image, runs tests)
+docker compose --profile ci up -d --wait
+
+# Local development (run API on host, UI in container)
+docker compose --profile dev up -d --wait
+npm start  # run API locally
+
+# Full environment
+docker compose --profile full up -d --wait
 ```
 
 ### Accessing Services
@@ -100,15 +120,15 @@ To run multiple instances simultaneously:
 
 ```bash
 # Instance 1 (default ports)
-COMPOSE_PROJECT_NAME=mcm1 COMPOSE_DOMAIN=mcm1.localhost docker compose up -d
+COMPOSE_PROJECT_NAME=mcm1 COMPOSE_DOMAIN=mcm1.localhost docker compose --profile full up -d
 
-# Instance 2 (different MySQL port)
-COMPOSE_PROJECT_NAME=mcm2 COMPOSE_DOMAIN=mcm2.localhost DATABASE_PORT=3307 docker compose up -d
+# Instance 2 (different ports)
+COMPOSE_PROJECT_NAME=mcm2 COMPOSE_DOMAIN=mcm2.localhost TRAEFIK_HTTP_PORT=8080 DATABASE_PORT=3307 docker compose --profile full up -d
 ```
 
 Access via:
-- Instance 1: `http://api.mcm1.localhost`, MySQL at `localhost:3306`
-- Instance 2: `http://api.mcm2.localhost`, MySQL at `localhost:3307`
+- Instance 1: http://mcm1.localhost, MySQL at `localhost:3306`
+- Instance 2: http://mcm2.localhost:8080, MySQL at `localhost:3307`
 
 See [.env-example](./.env-example) for all available configuration options.
 

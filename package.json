@@ -46,7 +46,7 @@
     "migrate:rollback": "npm run knex-cli  migrate:rollback",
     "migrate:new": "npm run knex-cli  migrate:make",
     "knex-cli": "DOTENV_CONFIG_PATH=$(pwd)/.env npx knex --knexfile src/knexfile.js ",
-    "backend:start": "docker compose --profile functional up -d --wait",
+    "backend:start": "docker compose --profile ci up -d --wait",
     "backend:stop": "docker compose down -v",
     "backend:restart": "npm run backend:stop && npm run backend:start"
   },

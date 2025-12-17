@@ -1,3 +1,21 @@
+x-api-env: &api-env
+  - OPENID_DISCOVERY_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}/realms/dfsps
+  - LOGIN_CALLBACK=http://${COMPOSE_DOMAIN:-mcm.localhost}/api/auth/callback
+  - KEYCLOAK_BASE_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}
+  - KEYCLOAK_DISCOVERY_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}/realms/dfsps/.well-known/openid-configuration
+  - CLIENT_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
+
+x-api-labels: &api-labels
+  - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
+  - "traefik.http.services.mcm-api.loadbalancer.server.port=3001"
+
+x-api-healthcheck: &api-healthcheck
+  test: wget --spider --quiet http://localhost:3001/api/health
+  interval: 5s
+  timeout: 3s
+  retries: 3
+  start_period: 5s
+
 configs:
   realm-template:
     file: ./docker/keycloak/dfsps-realm.json
@@ -36,6 +54,7 @@ services:
     hostname: connection-manager-ui
     profiles:
       - dev
+      - full
     environment:
       - AUTH_ENABLED=TRUE
       - API_BASE_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
@@ -48,9 +67,6 @@ services:
     tty: true
     stdin_open: true
     restart: always
-    depends_on:
-      connection-manager-api:
-        condition: service_healthy
 
   connection-manager-migration:
     image: mojaloop/connection-manager-api:local
@@ -59,21 +75,9 @@ services:
       context: .
       dockerfile: Dockerfile
     profiles:
-      - functional
-    environment:
-      - DATABASE_HOST=connection-manager-db
-      - DATABASE_PORT=3306
-      - DATABASE_USER=${DBUSER:-mcm}
-      - DATABASE_PASSWORD=${DBPASS:-mcm}
-      - DATABASE_SCHEMA=${DBUSER:-mcm}
-        # FIXME: move Vault out migration scripts
-      - VAULT_ENDPOINT=http://vault:8233
-      - VAULT_AUTH_METHOD=APP_ROLE
-      - VAULT_ROLE_ID_FILE=/vault/role-id
-      - VAULT_ROLE_SECRET_ID_FILE=/vault/secret-id
-      - VAULT_PKI_CLIENT_ROLE=example.com
-      - VAULT_PKI_SERVER_ROLE=example.com
-      - SWITCH_ID=switch
+      - ci
+    env_file:
+      - ./docker/migration.env
     depends_on:
       connection-manager-db:
         condition: service_healthy
@@ -84,6 +88,33 @@ services:
     command: npm run migrate
     restart: "no"
 
+  connection-manager-migration-full:
+    image: mojaloop/connection-manager-api
+    profiles:
+      - full
+    env_file:
+      - ./docker/migration.env
+    depends_on:
+      connection-manager-db:
+        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+    volumes:
+      - vault-creds:/vault
+    command: npm run migrate
+    restart: "no"
+
+  connection-manager-api-proxy:
+    image: alpine/socat
+    command: tcp-listen:${PORT:-3001},fork,reuseaddr tcp-connect:host.docker.internal:${PORT:-3001}
+    profiles:
+      - dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
+      - "traefik.http.services.mcm-api.loadbalancer.server.port=${PORT:-3001}"
+
   connection-manager-api:
     image: mojaloop/connection-manager-api:local
     pull_policy: if_not_present
@@ -91,46 +122,11 @@ services:
       context: .
       dockerfile: Dockerfile
     profiles:
-      - functional
-    environment:
-      - DATABASE_HOST=connection-manager-db
-      - DATABASE_PORT=3306
-      - DATABASE_USER=${DBUSER:-mcm}
-      - DATABASE_PASSWORD=${DBPASS:-mcm}
-      - DATABASE_SCHEMA=${DBUSER:-mcm}
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-moja123}
-      - PORT=3001
-      - SWITCH_ID=switch
-      - VAULT_ENDPOINT=http://vault:8233
-      - VAULT_AUTH_METHOD=APP_ROLE
-      - VAULT_ROLE_ID_FILE=/vault/role-id
-      - VAULT_ROLE_SECRET_ID_FILE=/vault/secret-id
-      - VAULT_PKI_CLIENT_ROLE=example.com
-      - VAULT_PKI_SERVER_ROLE=example.com
-      - OPENID_ENABLED=true
-      - OPENID_ENABLE_2FA=false
-      - OPENID_ALLOW_INSECURE=true
-      - OPENID_DISCOVERY_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}/realms/dfsps
-      - OPENID_CLIENT_ID=connection-manager-auth-client
-      - OPENID_CLIENT_SECRET=dfsps456
-      - OPENID_AUDIENCE=connection-manager-api
-      - LOGIN_CALLBACK=http://${COMPOSE_DOMAIN:-mcm.localhost}/api/auth/callback
-      - KEYCLOAK_ENABLED=true
-      - KEYCLOAK_AUTO_CREATE_ACCOUNTS=true
-      - KEYCLOAK_BASE_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}
-      - KEYCLOAK_DISCOVERY_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}/realms/dfsps/.well-known/openid-configuration
-      - KEYCLOAK_ADMIN_CLIENT_ID=connection-manager-api-service
-      - KEYCLOAK_ADMIN_CLIENT_SECRET=dfsps123
-      - CLIENT_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
-      - SESSION_COOKIE_SAME_SITE_STRICT=false
-      - CLIENT_CSR_PARAMETERS=/resources/tlsClientCSRParameters.json
-      - SERVER_CSR_PARAMETERS=/resources/tlsServerCSRParameters.json
-      - CA_CSR_PARAMETERS=/resources/caCSRParameters.json
-      - VAULT_SIGN_EXPIRY_HOURS=4000
-      - INTERNAL_CA_TTL=8760h
-    labels:
-      - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
-      - "traefik.http.services.mcm-api.loadbalancer.server.port=3001"
+      - ci
+    env_file:
+      - ./docker/api.env
+    environment: *api-env
+    labels: *api-labels
     volumes:
       - vault-creds:/vault
       - ./docker/mcm/resources:/resources:ro
@@ -144,12 +140,30 @@ services:
         condition: service_healthy
       connection-manager-migration:
         condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3001/api/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
+    healthcheck: *api-healthcheck
+
+  connection-manager-api-full:
+    image: mojaloop/connection-manager-api
+    profiles:
+      - full
+    env_file:
+      - ./docker/api.env
+    environment: *api-env
+    labels: *api-labels
+    volumes:
+      - vault-creds:/vault
+      - ./docker/mcm/resources:/resources:ro
+    tty: true
+    stdin_open: true
+    restart: always
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      connection-manager-migration-full:
+        condition: service_completed_successfully
+    healthcheck: *api-healthcheck
 
   connection-manager-db:
     image: mysql:9
@@ -224,9 +238,8 @@ services:
     restart: "no"
     profiles:
       - dev
-      - functional
+      - ci
 
-  # Mailpit for email testing
   mailpit:
     image: axllent/mailpit:latest
     labels:
@@ -247,7 +260,7 @@ services:
         target: /template/dfsps-realm.json.template
         mode: 0444
     volumes:
-      - keycloak-import:/work            # writeable volume shared with Keycloak
+      - keycloak-import:/work
     env_file:
       - ./docker/keycloak/dfsp-realm.env
     entrypoint: |
@@ -282,4 +295,3 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-
