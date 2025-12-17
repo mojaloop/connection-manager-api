@@ -10,7 +10,7 @@ You can build a docker image to avoid installing dependencies and then it can be
 
 ```bash
 docker build --network="host" -t mcm-smoke-test .
-docker run --network="host" -e SERVER='http://localhost:3001' -e hubuser=__CHANGE_ME__ -e hubpass=__CHANGE_ME__ mcm-smoke-test
+docker run --network="host" -e SERVER='http://mcm.localhost/api' -e hubuser=__CHANGE_ME__ -e hubpass=__CHANGE_ME__ mcm-smoke-test
 ```
 
 ### OUTPUT

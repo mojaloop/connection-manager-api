@@ -26,7 +26,7 @@ require('dotenv').config();
 const env = require('env-var');
 
 module.exports = {
-  mcmEndpoint: env.get('APP_ENDPOINT').default('http://localhost:3001/api').asString(),
+  mcmEndpoint: env.get('APP_ENDPOINT').default('http://mcm.localhost/api').asString(),
   oauth2Issuer: env.get('OAUTH2_ISSUER').asString(),
   oauthClientKey: env.get('APP_OAUTH_CLIENT_KEY').asString(),
   oauthClientSecret: env.get('APP_OAUTH_CLIENT_SECRET').asString()

@@ -15,7 +15,7 @@ echo Seeding DB...
 npm run seed
 
 echo Creating hub CA...
-curl --location 'http://localhost:3001/api/hub/ca' \
+curl --location 'http://mcm.localhost/api/hub/ca' \
 --header 'Content-Type: application/json' \
 --header 'Accept: application/json' \
 --data '{
