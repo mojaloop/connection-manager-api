@@ -26,8 +26,8 @@
  ******/
 
 const { ulid } = require('ulid');
-const { CONTEXT} = require('../constants/Constants');
-const { PingStatus, PingStatusToError, PingStep } = require('./constants');
+const { CONTEXT } = require('../constants/Constants');
+const { PingStatus, PingStatusNumber, PingStatusToError, PingStep } = require('./constants');
 
 /**
  * @typedef {Object} DfspWatcherDeps
@@ -48,6 +48,18 @@ class DfspWatcher {
     this.dfspModel = deps.dfspModel;
     this.pingPongClient = deps.pingPongClient;
     this.metrics = deps.metrics;
+
+    this.dfspStatusGauge = this.metrics.getGauge(
+      'dfsp_status_state',
+      'DFSP status indicator (enum value of current status)',
+      ['dfsp']
+    );
+
+    this.dfspPingLatencyHistogram = this.metrics.getHistogram(
+      'dfsp_ping_latency_seconds',
+      'DFSP ping latency in seconds',
+      ['dfsp', 'success']
+    );
   }
 
   async start() {
@@ -80,8 +92,15 @@ class DfspWatcher {
 
   async processOneDfspPing(dfspId) {
     const requestId = this.#generateRequestId();
+    const histTimerEnd = this.dfspPingLatencyHistogram.startTimer({ dfsp: dfspId });
     const { pingStatus, errorInformation } = await this.pingPongClient.sendPingRequest(dfspId, requestId);
+    const success = !errorInformation;
+    histTimerEnd({ success });
     const isUpdated = await this.dfspModel.updatePingStatus(dfspId, pingStatus);
+
+    // Set Prometheus gauge for DFSP status using enum number
+    this.#setDfspStatusGauge(dfspId, pingStatus);
+
     if (pingStatus !== PingStatus.SUCCESS) this.#incrementErrorCounter(dfspId, pingStatus);
     this.log.verbose(`processOneDfspPing is done:`, { dfspId, isUpdated, requestId, pingStatus, errorInformation });
     return { pingStatus, dfspId };
@@ -108,7 +127,6 @@ class DfspWatcher {
         code: PingStatusToError[pingStatus] || 'unknown',
         context: CONTEXT,
         operation: `ping-${dfspId}`,
-        step // or add here dfsp?
       };
       errorCounter.inc(errDetails);
       log.info('incrementErrorCounter is called:', { errDetails });
@@ -121,6 +139,20 @@ class DfspWatcher {
     const requestId = ulid();
     this.log.debug(`generated requestId:`, { requestId });
     return requestId;
+  }
+
+  #setDfspStatusGauge(dfspId, newPingStatus) {
+    try {
+      const statusValue = PingStatusNumber[newPingStatus];
+      if (typeof statusValue === 'undefined') {
+        this.log.warn('Invalid pingStatus for dfspStatusGauge, setting to -1 as fallback.', { dfspId, newPingStatus });
+        this.dfspStatusGauge.set({ dfsp: dfspId }, -1);
+      } else {
+        this.dfspStatusGauge.set({ dfsp: dfspId }, statusValue);
+      }
+    } catch (error) {
+      this.log.error('Error setting dfspStatusGauge:', { dfspId, newPingStatus, error });
+    }
   }
 }
 

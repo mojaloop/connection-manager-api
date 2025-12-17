@@ -35,6 +35,14 @@ const PingStatus = Object.freeze({
   PING_ERROR: 'PING_ERROR', // connection to ping-pong server failed
 });
 
+const PingStatusNumber = Object.freeze({
+  [PingStatus.SUCCESS]: 0,
+  [PingStatus.NOT_REACHABLE]: 1,
+  [PingStatus.JWS_FAILED]: 2,
+  [PingStatus.TIMED_OUT]: 3,
+  [PingStatus.PING_ERROR]: 4,
+});
+
 const PingStatusToError = Object.freeze({
   [PingStatus.NOT_REACHABLE]: 'network',
   [PingStatus.JWS_FAILED]: 'jws',
@@ -53,6 +61,7 @@ const DEFAULT_HTTP_TIMEOUT_MS = 40_000; // todo: make configurable
 module.exports = {
   CONTEXT,
   PingStatus,
+  PingStatusNumber,
   PingStatusToError,
   PingStep,
   DEFAULT_HTTP_TIMEOUT_MS,

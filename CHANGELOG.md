@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.4.0](https://github.com/mojaloop/connection-manager-api/compare/v3.3.2...v3.4.0) (2025-12-12)
+
+
+### Features
+
+* **csi-1941:** add dfsp gauge for alerting functionality ([#175](https://github.com/mojaloop/connection-manager-api/issues/175)) ([de1767e](https://github.com/mojaloop/connection-manager-api/commit/de1767ed62a3c29064ff4df935cc22c05d117121))
+
 ### [3.3.2](https://github.com/mojaloop/connection-manager-api/compare/v3.3.1...v3.3.2) (2025-12-02)
 
 
