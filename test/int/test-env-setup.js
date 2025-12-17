@@ -51,6 +51,8 @@ process.env.OPENID_DISCOVERY_URL = 'http://keycloak.mcm.localhost/realms/dfsps/.
 process.env.OPENID_CLIENT_ID = 'connection-manager-auth-client';
 process.env.OPENID_CLIENT_SECRET = 'dfsps456';
 process.env.OPENID_REDIRECT_URI = 'http://mcm.localhost/api/auth/callback';
+
+// Cookie and role settings
 process.env.OPENID_JWT_COOKIE_NAME = 'MCM-API_ACCESS_TOKEN';
 process.env.OPENID_EVERYONE_ROLE = 'everyone';
 process.env.OPENID_MTA_ROLE = 'mta';
@@ -61,4 +63,3 @@ process.env.SESSION_SECRET = 'test-session-secret-for-integration-tests';
 
 // Features
 process.env.DFSP_WATCHER_ENABLED = 'false';
- 
