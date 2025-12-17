@@ -14,8 +14,6 @@ const forge = require('node-forge');
 const tls = require('tls');
 const Joi = require('joi');
 const moment = require('moment');
-const ValidationError = require('../errors/ValidationError');
-const { logger } = require('../log/logger');
 
 const PKIEngine = require('./PKIEngine');
 const Validation = require('./Validation');
@@ -23,7 +21,9 @@ const ValidationCodes = require('./ValidationCodes');
 const CAType = require('../models/CAType');
 const InvalidEntityError = require('../errors/InvalidEntityError');
 const NotFoundError = require('../errors/NotFoundError');
+const ValidationError = require('../errors/ValidationError');
 const { vaultPaths } = require('../constants/Constants');
+const { logger } = require('../log/logger');
 
 const VALID_SIGNED = 'VALID(SIGNED)';
 const VALID_SELF_SIGNED = 'VALID(SELF_SIGNED)';
