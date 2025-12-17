@@ -32,6 +32,7 @@ const formatValidator = require('../utils/formatValidator');
 const requireEsm = require('../utils/requireEsm');
 const KetoClient = require('../utils/KetoClient');
 const { logger } = require('../log/logger');
+
 const log = logger.child({ component: 'KeycloakService' });
 
 const getKeycloakAdminClient = async () => {
@@ -167,7 +168,10 @@ const createUserConfig = (email) => {
 
 
 const sendInvitationEmail = async (kcAdminClient, userId, email) => {
-  if (!email) return;
+  if (!email) {
+    log.warn(`No email provided, skip sending email`, { userId });
+    return;
+  }
 
   const requiredActions = ['UPDATE_PASSWORD', 'UPDATE_PROFILE'];
 

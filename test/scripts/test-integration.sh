@@ -6,12 +6,6 @@ PROJECT_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
 cd "${PROJECT_ROOT}"
 
-echo "Starting coverage tests..."
-
-# Ensure environment is test
-source "${SCRIPT_DIR}/env.sh"
-
-# Running in CI
 echo "Running in CI environment..."
 npm run backend:start
 

@@ -182,7 +182,7 @@ See [.env-example](./.env-example) for all available configuration options.
 |KEYCLOAK_ADMIN_CLIENT_ID|Client ID for Keycloak admin operations|connection-manager-client
 |KEYCLOAK_ADMIN_CLIENT_SECRET|Client secret for Keycloak admin operations|
 |KEYCLOAK_DFSPS_REALM|Keycloak realm for DFSP accounts|dfsps
-|KEYCLOAK_AUTO_CREATE_ACCOUNTS|Automatically create Keycloak accounts when DFSPs are created|true
+|KEYCLOAK_AUTO_CREATE_ACCOUNTS|Automatically create Keycloak accounts when DFSPs are created|false
 | **Other features**
 |DFSP_WATCHER_ENABLED|Enable DFSP watcher service|false
 

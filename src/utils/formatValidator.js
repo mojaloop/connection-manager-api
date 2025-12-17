@@ -90,3 +90,11 @@ exports.validateDfspIdForKeycloak = (dfspId) => {
 
   return true;
 };
+
+exports.validateEmail = (email) => {
+  if (!email) {
+    throw new ValidationError('email is required when Keycloak is enabled and AUTO_CREATE_ACCOUNTS is true');
+  }
+  // todo: think if we need better validation. e.g. /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+  return true;
+};

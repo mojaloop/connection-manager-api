@@ -40,7 +40,21 @@ const DFSP_STATES = [
   'UPLOAD_PEER_JWS'
 ];
 
+// TODO: find and link document containing rules on allowable paths
+const vaultPaths = {
+  HUB_SERVER_CERT: 'hub-server-cert',
+  DFSP_SERVER_CERT: 'dfsp-server-cert',
+  JWS_CERTS: 'dfsp-jws-certs',
+  EXTERNAL_JWS_CERTS: 'dfsp-external-jws-certs',
+  HUB_ENDPOINTS: 'hub-endpoints',
+  DFSP_CA: 'dfsp-ca',
+  HUB_CA_DETAILS: 'hub-ca-details',
+  DFSP_OUTBOUND_ENROLLMENT: 'dfsp-outbound-enrollment',
+  DFSP_INBOUND_ENROLLMENT: 'dfsp-inbound-enrollment',
+};
+
 module.exports = {
   CONTEXT,
-  DFSP_STATES
+  DFSP_STATES,
+  vaultPaths
 };

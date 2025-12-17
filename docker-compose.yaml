@@ -60,14 +60,21 @@ services:
       dockerfile: Dockerfile
     profiles:
       - functional
+    env_file: ./test/.env-func
     environment:
       - DATABASE_HOST=connection-manager-db
-      - DATABASE_PORT=3306
       - DATABASE_USER=${DBUSER:-mcm}
       - DATABASE_PASSWORD=${DBPASS:-mcm}
       - DATABASE_SCHEMA=${DBUSER:-mcm}
+      - VAULT_ENDPOINT=http://vault-dev:8233
+      - VAULT_ROLE_ID_FILE=/vault/tmp/role-id
+      - VAULT_ROLE_SECRET_ID_FILE=/vault/tmp/secret-id
+    volumes:
+      - ./docker/vault/tmp:/vault/tmp
     depends_on:
       connection-manager-db:
+        condition: service_healthy
+      vault-dev:
         condition: service_healthy
     command: npm run migrate
     restart: "no"
@@ -80,9 +87,10 @@ services:
       dockerfile: Dockerfile
     profiles:
       - functional
+    env_file: ./test/.env-func
     environment:
+      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-moja123}
       - DATABASE_HOST=connection-manager-db
-      - DATABASE_PORT=3306
       - DATABASE_USER=${DBUSER:-mcm}
       - DATABASE_PASSWORD=${DBPASS:-mcm}
       - DATABASE_SCHEMA=${DBUSER:-mcm}
@@ -270,4 +278,3 @@ services:
       timeout: 5s
       retries: 5
       start_period: 30s
-

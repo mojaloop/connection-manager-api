@@ -1,6 +1,5 @@
 // Unit test environment setup
-// This file is loaded automatically by jest.config.js projects[unit].setupFiles
-// Unit tests should mock dependencies, but need minimal env for module loading
+// This file is loaded automatically by jest.config.js
 
 const tmp = require('tmp');
 const { randomUUID } = require('node:crypto');

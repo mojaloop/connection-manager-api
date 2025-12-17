@@ -65,17 +65,34 @@ exports.connect = async () => {
   const pkiEngine = new PKIEngine(Constants.vault);
   await pkiEngine.connect();
 
-  let certManager;
+  let certManager, hubJwsCertManager;
   if (Constants.certManager.enabled) {
+    const {
+      serverCertSecretName,
+      serverCertSecretNamespace,
+      jwsHubCertSecretName,
+      jwsHubCertSecretNamespace
+    } = Constants.certManager;
+
     certManager = new CertManager({
-      ...Constants.certManager,
+      serverCertSecretName,
+      serverCertSecretNamespace,
       logger,
     });
     await certManager.initK8s();
+
+    if (jwsHubCertSecretName && jwsHubCertSecretNamespace) {
+      hubJwsCertManager = new CertManager({
+        serverCertSecretName: jwsHubCertSecretName,
+        serverCertSecretNamespace: jwsHubCertSecretNamespace,
+        logger,
+      });
+      await hubJwsCertManager.initK8s();
+    }
   }
 
   let rootCA;
-  const ctx = { pkiEngine, certManager };
+  const ctx = { pkiEngine, certManager, hubJwsCertManager };
   try {
     rootCA = await HubCAService.getHubCA(ctx);
   } catch (e) {
@@ -92,6 +109,7 @@ exports.connect = async () => {
       req.context = {
         pkiEngine,
         certManager,
+        hubJwsCertManager,
         db: db.knex,
       };
       next();

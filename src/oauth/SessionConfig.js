@@ -30,6 +30,8 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const Constants = require('../constants/Constants');
 
+const SESSION_TIMEOUT_MS = 8 * 60 * 60 * 1000; // 8 hours
+
 // MySQL session store options
 const sessionStoreOptions = {
   host: Constants.DATABASE.DATABASE_HOST,
@@ -40,7 +42,7 @@ const sessionStoreOptions = {
   // Recommended options for MySQL session store
   clearExpired: true,
   checkExpirationInterval: 15 * 60 * 1000, // 15 minutes
-  expiration: 8 * 60 * 60 * 1000, // 8 hours
+  expiration: SESSION_TIMEOUT_MS,
   connectionLimit: 10,
   schema: {
     tableName: 'sessions',
@@ -52,12 +54,20 @@ const sessionStoreOptions = {
   }
 };
 
-const sessionStore = new MySQLStore(sessionStoreOptions);
+// Lazy initialization: session store only created when needed
+let sessionStore = null;
+
+const getOrCreateSessionStore = () => {
+  if (!sessionStore) {
+    sessionStore = new MySQLStore(sessionStoreOptions);
+  }
+  return sessionStore;
+};
 
 const sessionOptions = {
   key: 'mcm_session',
   secret: Constants.SESSION_STORE.SECRET,
-  store: sessionStore,
+  store: null, // will be set when middleware is created
   resave: false,
   saveUninitialized: false,
   rolling: true,
@@ -65,16 +75,17 @@ const sessionOptions = {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: Constants.SESSION_STORE.COOKIE_SAME_SITE_STRICT ? 'Strict' : 'Lax',
-    maxAge: 8 * 60 * 60 * 1000 // 8 hours
+    maxAge: SESSION_TIMEOUT_MS
   }
 };
 
 exports.createSessionMiddleware = () => {
-  return session(sessionOptions);
+  const store = getOrCreateSessionStore();
+  return session({ ...sessionOptions, store });
 };
 
 exports.getSessionStore = () => {
-  return sessionStore;
+  return getOrCreateSessionStore();
 };
 
 exports.sessionOptions = sessionOptions;

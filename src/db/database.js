@@ -53,6 +53,10 @@ const retryOptions = {
   // even though that's rather unlikely. You never know where your code will end up..
 };
 
+/**
+ * Database connection instance
+ * @type {import('@mojaloop/central-services-shared/src/mysql').KnexWrapper}
+ */
 module.exports = new KnexWrapper({
   knexOptions,
   retryOptions,

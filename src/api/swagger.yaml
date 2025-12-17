@@ -893,6 +893,31 @@ paths:
             - pta
       x-swagger-router-controller: JWSCerts
       x-codegen-request-body-name: body
+  /hub/jwscerts/rotate:
+    put:
+      tags:
+        - JWS-certificates-configuration
+      summary: Rotate Hub JWS certificate
+      description: Triggers rotation of the Hub JWS certificate.
+      operationId: rotateHubJWSCerts
+      responses:
+        200:
+          description: successful operation
+          content: {}
+        500:
+          description: error rotating certificate
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+      security:
+        - OAuth2:
+            - mta
+            - pta
+      x-swagger-router-controller: JWSCerts
   /dfsps/jwscerts:
     get:
       tags:
@@ -3006,7 +3031,6 @@ components:
       required:
         - dfspId
         - name
-        - email
       example:
         dfspId: DFSP1
         name: DFSP 1

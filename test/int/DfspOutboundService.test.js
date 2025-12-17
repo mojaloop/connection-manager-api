@@ -78,19 +78,16 @@ describe("DfspOutboundService", function () {
   describe("DfspOutboundService flow", function () {
     let dfspId = null;
     const DFSP_TEST_OUTBOUND = "dfsp.outbound.io";
-    beforeEach(async function () {
 
+    beforeAll(async () => {
       await createInternalHubCA(ctx, ROOT_CA);
+    }, 10_000);
 
+    beforeEach(async function () {
       const dfsp = createUniqueDfsp();
       const resultDfsp = await PkiService.createDFSP(ctx, dfsp);
       dfspId = resultDfsp.id;
-
-      const dbDfspId = await DFSPModel.findIdByDfspId(dfspId);
-      try {
-        await ctx.pkiEngine.deleteAllDFSPData(dbDfspId);
-      } catch (e) {}
-    }, 10000);
+    });
 
     afterEach(async () => {
       await PkiService.deleteDFSP(ctx, dfspId);

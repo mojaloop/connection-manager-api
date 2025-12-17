@@ -63,6 +63,16 @@ exports.getDfspJWSCerts = (req, res, next) => {
     });
 };
 
+exports.rotateHubJWSCerts = (req, res, next) => {
+  JWSCertsService.rotateHubJWSCerts(req.context)
+    .then(response => {
+      utils.writeJson(res, response);
+    })
+    .catch(response => {
+      utils.writeJson(res, response);
+    });
+};
+
 exports.getHubJWSCerts = (req, res, next) => {
   JWSCertsService.getHubJWSCerts(req.context)
     .then(response => {

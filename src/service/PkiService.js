@@ -27,6 +27,7 @@ const Constants = require('../constants/Constants');
 const { createCSRAndDFSPOutboundEnrollment } = require('./DfspOutboundService');
 const keycloakService = require('./KeycloakService');
 const { logger } = require('../log/logger');
+
 const log = logger.child({ component: 'PkiService' });
 
 /**
@@ -38,32 +39,36 @@ const log = logger.child({ component: 'PkiService' });
  **/
 exports.createDFSP = async (ctx, body) => {
   log.info('Creating DFSP with body:', body);
-  const regex = / /gi;
-  const dfspIdNoSpaces = body.dfspId ? body.dfspId.replace(regex, '-') : null;
-
-  // Validate dfspId for Keycloak requirements if Keycloak is enabled
-  if (Constants.KEYCLOAK.ENABLED && Constants.KEYCLOAK.AUTO_CREATE_ACCOUNTS) {
-    formatValidator.validateDfspIdForKeycloak(body.dfspId);
-  }
-
-  const values = {
-    dfsp_id: body.dfspId,
-    name: body.name,
-    monetaryZoneId: body.monetaryZoneId ? body.monetaryZoneId : undefined,
-    isProxy: body.isProxy,
-    security_group: body.securityGroup || `Application/DFSP:${dfspIdNoSpaces}`
-  };
 
   try {
     if (Constants.KEYCLOAK.ENABLED && Constants.KEYCLOAK.AUTO_CREATE_ACCOUNTS) {
+      // Validate dfspId for Keycloak requirements if Keycloak is enabled
+      formatValidator.validateDfspIdForKeycloak(body.dfspId);
+
+      formatValidator.validateEmail(body.email);
+
       await keycloakService.createDfspResources(body.dfspId, body.email);
     }
+
+    const regex = / /gi;
+    const dfspIdNoSpaces = body.dfspId ? body.dfspId.replace(regex, '-') : null;
+
+    const values = {
+      dfsp_id: body.dfspId,
+      name: body.name,
+      monetaryZoneId: body.monetaryZoneId ? body.monetaryZoneId : undefined,
+      isProxy: body.isProxy,
+      security_group: body.securityGroup || `Application/DFSP:${dfspIdNoSpaces}`
+    };
+
     await DFSPModel.create(values);
     await DFSPModel.createFxpSupportedCurrencies(body.dfspId, body.fxpCurrencies);
     return { id: body.dfspId };
   } catch (err) {
-    log.error(err);
-    throw new InternalError(err.message);
+    log.error('error in createDFSP: ', err);
+    throw err instanceof ValidationError
+      ? err
+      : new InternalError(err.message);
   }
 };
 

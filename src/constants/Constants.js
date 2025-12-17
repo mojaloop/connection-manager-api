@@ -16,15 +16,20 @@
  ******************************************************************************/
 
 require('dotenv/config');
-const fs = require('fs');
+const fs = require('node:fs');
+const pathModule = require('node:path');
 const { from } = require('env-var');
 const constValues = require('./constValues');
 
 function getFileContent (path) {
-  if (!fs.existsSync(path)) {
-    throw new Error(`File ${path} doesn't exist`);
+  const resolvedPath = path.startsWith('/')
+    ? path
+    : pathModule.resolve(__dirname, '../..', path); // .env file is in the root
+
+  if (!fs.existsSync(resolvedPath)) {
+    throw new Error(`File ${resolvedPath} doesn't exist`);
   }
-  return fs.readFileSync(path);
+  return fs.readFileSync(resolvedPath);
 }
 
 const env = from(process.env, {
@@ -62,6 +67,8 @@ const certManager = {
 if (certManager.enabled) {
   certManager.serverCertSecretName = env.get('CERT_MANAGER_SERVER_CERT_SECRET_NAME').asString();
   certManager.serverCertSecretNamespace = env.get('CERT_MANAGER_SERVER_CERT_SECRET_NAMESPACE').asString();
+  certManager.jwsHubCertSecretName = env.get('CERT_MANAGER_JWS_HUB_CERT_SECRET_NAME').asString();
+  certManager.jwsHubCertSecretNamespace = env.get('CERT_MANAGER_JWS_HUB_CERT_SECRET_NAMESPACE').asString();
 }
 
 module.exports = {
@@ -83,7 +90,7 @@ module.exports = {
     ADMIN_CLIENT_ID: env.get('KEYCLOAK_ADMIN_CLIENT_ID').default('connection-manager-client').asString(),
     ADMIN_CLIENT_SECRET: env.get('KEYCLOAK_ADMIN_CLIENT_SECRET').asString(),
     DFSPS_REALM: env.get('KEYCLOAK_DFSPS_REALM').default('dfsps').asString(),
-    AUTO_CREATE_ACCOUNTS: env.get('KEYCLOAK_AUTO_CREATE_ACCOUNTS').default('true').asBool(),
+    AUTO_CREATE_ACCOUNTS: env.get('KEYCLOAK_AUTO_CREATE_ACCOUNTS').default('false').asBool(),
   },
 
   KETO: {
@@ -138,6 +145,7 @@ module.exports = {
   },
   switchFQDN: env.get('SWITCH_FQDN').default('switch.example.com').asString(),
   switchId: env.get('SWITCH_ID').required().asString(),
+  switchEmail: env.get('SWITCH_EMAIL').default('switch@hub.local').asString(),
 
   vault: {
     endpoint: env.get('VAULT_ENDPOINT').default('http://127.0.0.1:8233').asString(),

@@ -15,6 +15,7 @@
  *  limitations under the License.                                            *
  ******************************************************************************/
 
+const sinon = require('sinon');
 const forge = require('node-forge');
 const { switchId } = require('../../src/constants/Constants');
 const JWSCertsService = require('../../src/service/JWSCertsService');
@@ -23,22 +24,16 @@ const PkiService = require('../../src/service/PkiService');
 const NotFoundError = require('../../src/errors/NotFoundError');
 const ValidationCodes = require('../../src/pki_engine/ValidationCodes');
 const DFSPModel = require('../../src/models/DFSPModel');
-const { setupTestDB, tearDownTestDB } = require('../int/test-database');
-const { createContext, destroyContext } = require('../int/context');
-const sinon = require('sinon');
 const ValidationError = require('../../src/errors/ValidationError');
 const database = require('../../src/db/database');
-const { createUniqueDfsp } = require('./test-helpers');
 const { logger } = require('../../src/log/logger');
+const { setupTestDB, tearDownTestDB } = require('../int/test-database');
+const { createContext, destroyContext } = require('../int/context');
+const { createUniqueDfsp } = require('./test-helpers');
 
 describe('JWSCertsService Tests', () => {
   let ctx;
   let publicKey;
-
-  beforeEach(async () => {
-    // Reset the database before each test
-    await database.knex('dfsps').del();
-  });
 
   beforeAll(async () => {
     await setupTestDB();
@@ -46,6 +41,11 @@ describe('JWSCertsService Tests', () => {
     ctx = await createContext();
     const keypair = forge.rsa.generateKeyPair({ bits: 2048 });
     publicKey = forge.pki.publicKeyToPem(keypair.publicKey, 72);
+  });
+
+  beforeEach(async () => {
+    // Reset the database before each test
+    await database.knex('dfsps').del();
   });
 
   afterAll(async () => {
@@ -326,5 +326,62 @@ describe('JWSCertsService - setHubJWSCerts', () => {
     sinon.stub(JWSCertsService, 'createDfspJWSCerts').rejects(new Error('Test Error'));
 
     await expect(JWSCertsService.setHubJWSCerts(ctx, body)).rejects.toThrow('Test Error');
+  });
+
+  describe('JWSCertsService - rotateHubJWSCerts', () => {
+    let ctx;
+
+    beforeEach(() => {
+      ctx = {};
+    });
+
+    afterEach(() => {
+      sinon.restore();
+    });
+
+    it('should successfully rotate hub JWS certs when hubJwsCertManager is configured', async () => {
+      const renewServerCertStub = sinon.stub().resolves();
+      ctx.hubJwsCertManager = {
+        renewServerCert: renewServerCertStub
+      };
+
+      const result = await JWSCertsService.rotateHubJWSCerts(ctx);
+
+      expect(renewServerCertStub.calledOnce).toBe(true);
+      expect(result).toEqual({ message: 'Hub JWS certificate rotation triggered' });
+    });
+
+    it('should throw an error when hubJwsCertManager is not configured', async () => {
+      ctx.hubJwsCertManager = null;
+
+      await expect(JWSCertsService.rotateHubJWSCerts(ctx)).rejects.toThrow('Hub JWS CertManager is not configured');
+    });
+
+    it('should throw an error when hubJwsCertManager is undefined', async () => {
+      ctx.hubJwsCertManager = undefined;
+
+      await expect(JWSCertsService.rotateHubJWSCerts(ctx)).rejects.toThrow('Hub JWS CertManager is not configured');
+    });
+
+    it('should propagate error when renewServerCert fails', async () => {
+      const renewServerCertStub = sinon.stub().rejects(new Error('Certificate renewal failed'));
+      ctx.hubJwsCertManager = {
+        renewServerCert: renewServerCertStub
+      };
+
+      await expect(JWSCertsService.rotateHubJWSCerts(ctx)).rejects.toThrow('Certificate renewal failed');
+      expect(renewServerCertStub.calledOnce).toBe(true);
+    });
+
+    it('should propagate custom error when renewServerCert fails with specific message', async () => {
+      const customError = new Error('Invalid certificate authority');
+      const renewServerCertStub = sinon.stub().rejects(customError);
+      ctx.hubJwsCertManager = {
+        renewServerCert: renewServerCertStub
+      };
+
+      await expect(JWSCertsService.rotateHubJWSCerts(ctx)).rejects.toThrow('Invalid certificate authority');
+      expect(renewServerCertStub.calledOnce).toBe(true);
+    });
   });
 });

@@ -32,7 +32,7 @@ const formatBody = (body, pkiEngine) => {
 };
 
 exports.createInternalHubCA = async (ctx, body, ttl) => {
-  const { pkiEngine, certManager } = ctx;
+  const { pkiEngine, certManager, hubJwsCertManager } = ctx;
 
   if (!ttl) {
     // ttl is falsy, we assume this means it was not provided. use env var or default.
@@ -52,13 +52,16 @@ exports.createInternalHubCA = async (ctx, body, ttl) => {
 
   if (certManager) {
     await certManager.renewServerCert();
+    if (hubJwsCertManager) {
+      await hubJwsCertManager.renewServerCert();
+    }
   }
 
   return info;
 };
 
 exports.createExternalHubCA = async (ctx, body) => {
-  const { pkiEngine, certManager } = ctx;
+  const { pkiEngine, certManager, hubJwsCertManager } = ctx;
 
   const rootCertificate = body.rootCertificate || '';
   const intermediateChain = body.intermediateChain || '';
@@ -82,6 +85,9 @@ exports.createExternalHubCA = async (ctx, body) => {
 
   if (certManager) {
     await certManager.renewServerCert();
+    if (hubJwsCertManager) {
+      await hubJwsCertManager.renewServerCert();
+    }
   }
   return info;
 };

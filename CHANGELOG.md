@@ -2,6 +2,52 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+## [3.4.0](https://github.com/mojaloop/connection-manager-api/compare/v3.3.2...v3.4.0) (2025-12-12)
+
+
+### Features
+
+* **csi-1941:** add dfsp gauge for alerting functionality ([#175](https://github.com/mojaloop/connection-manager-api/issues/175)) ([de1767e](https://github.com/mojaloop/connection-manager-api/commit/de1767ed62a3c29064ff4df935cc22c05d117121))
+
+### [3.3.2](https://github.com/mojaloop/connection-manager-api/compare/v3.3.1...v3.3.2) (2025-12-02)
+
+
+### Chore
+
+* add logging for cert manager ([#170](https://github.com/mojaloop/connection-manager-api/issues/170)) ([454dff4](https://github.com/mojaloop/connection-manager-api/commit/454dff4c771f5cef2945d90a7b472aa2f070f279))
+* fix audit ([#171](https://github.com/mojaloop/connection-manager-api/issues/171)) ([00159e0](https://github.com/mojaloop/connection-manager-api/commit/00159e096b5f7503028bdac6d16974cad52c7998))
+
+### [3.3.1](https://github.com/mojaloop/connection-manager-api/compare/v3.3.0...v3.3.1) (2025-12-01)
+
+
+### Bug Fixes
+
+* fix import on cert manager class ([#169](https://github.com/mojaloop/connection-manager-api/issues/169)) ([977a734](https://github.com/mojaloop/connection-manager-api/commit/977a73468d0b980d75b7ad5b9c6932cbf85d0082))
+
+## [3.3.0](https://github.com/mojaloop/connection-manager-api/compare/v3.2.1...v3.3.0) (2025-11-27)
+
+
+### Features
+
+* add endpoint to rotate switch jws in certmanager ([#164](https://github.com/mojaloop/connection-manager-api/issues/164)) ([3498b10](https://github.com/mojaloop/connection-manager-api/commit/3498b10df04b8d37b5c2a5abb6e60995ba97355c)), closes [#167](https://github.com/mojaloop/connection-manager-api/issues/167)
+
+### [3.2.1](https://github.com/mojaloop/connection-manager-api/compare/v3.2.0...v3.2.1) (2025-11-26)
+
+
+### Bug Fixes
+
+* cleanup ([7330e33](https://github.com/mojaloop/connection-manager-api/commit/7330e331353179f59582697596232306e3b07204))
+* improve integration tests and add test helpers ([61fb2cb](https://github.com/mojaloop/connection-manager-api/commit/61fb2cb90035a14f9cd95a4b96d3101276d2952b))
+
+## [3.2.0](https://github.com/mojaloop/connection-manager-api/compare/v3.2.0-storage-cluster.3...v3.2.0) (2025-11-25)
+
+### [3.1.5](https://github.com/mojaloop/connection-manager-api/compare/v3.1.4...v3.1.5) (2025-11-20)
+
+
+### Bug Fixes
+
+* service bug fixes (DFSP validation, timeout overflow, error handling) ([7a64bb1](https://github.com/mojaloop/connection-manager-api/commit/7a64bb12d4775312eac3a911ed8b8926ecd88d55))
+
 ### [3.1.4](https://github.com/mojaloop/connection-manager-api/compare/v3.1.3...v3.1.4) (2025-11-20)
 
 
