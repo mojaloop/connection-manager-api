@@ -1,7 +1,7 @@
 #!/bin/zsh
 
 # SETUP
-# export SERVER="http://localhost:3001"
+# export SERVER="http://mcm.localhost/api"
 
 if [[ -z "${SERVER}" ]]; then
   echo 'SERVER is not defined'

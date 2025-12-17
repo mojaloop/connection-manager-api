@@ -1,37 +1,72 @@
+x-api-env: &api-env
+  - OPENID_DISCOVERY_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}/realms/dfsps
+  - LOGIN_CALLBACK=http://${COMPOSE_DOMAIN:-mcm.localhost}/api/auth/callback
+  - KEYCLOAK_BASE_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}
+  - KEYCLOAK_DISCOVERY_URL=http://keycloak.${COMPOSE_DOMAIN:-mcm.localhost}/realms/dfsps/.well-known/openid-configuration
+  - CLIENT_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
+
+x-api-labels: &api-labels
+  - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
+  - "traefik.http.services.mcm-api.loadbalancer.server.port=3001"
+
+x-api-healthcheck: &api-healthcheck
+  test: wget --spider --quiet http://localhost:3001/api/health
+  interval: 5s
+  timeout: 3s
+  retries: 3
+  start_period: 5s
+
 configs:
   realm-template:
     file: ./docker/keycloak/dfsps-realm.json
 
 volumes:
   keycloak-import: {}
+  vault-data: {}
+  vault-creds: {}
+  mailpit-data: {}
 
 services:
+
+  traefik:
+    image: traefik
+    command:
+      - --entrypoints.web.address=:80
+      - --providers.docker=true
+      - --api.dashboard=true
+      - --api.insecure=true
+    ports:
+      - "${TRAEFIK_HTTP_PORT:-80}:80"
+      - "${TRAEFIK_DASHBOARD_PORT:-8090}:8080"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      default:
+        aliases:
+          - ${COMPOSE_DOMAIN:-mcm.localhost}
+          - vault.${COMPOSE_DOMAIN:-mcm.localhost}
+          - keycloak.${COMPOSE_DOMAIN:-mcm.localhost}
+          - mailpit.${COMPOSE_DOMAIN:-mcm.localhost}
+    restart: always
+
   connection-manager-ui:
-    # This builds the image from a locally cloned repo
-    build:
-      context: ../connection-manager-ui
-      dockerfile: Dockerfile
-      args:
-        - AUTH_ENABLED=TRUE
-        - REACT_APP_COMMIT=${REACT_APP_COMMIT:-unknown}
-        - REACT_APP_VERSION=${REACT_APP_VERSION:-unknown}
+    image: mojaloop/connection-manager-ui
     hostname: connection-manager-ui
     profiles:
       - dev
+      - full
     environment:
       - AUTH_ENABLED=TRUE
-      - API_BASE_URL=http://localhost:3001
-      - LOGIN_URL=http://localhost:3001/api/auth/login
-      - LOGOUT_URL=http://localhost:3001/api/auth/logout
-      - CHECK_SESSION_URL=http://localhost:3001/api/auth/profile
+      - API_BASE_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
+      - LOGIN_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}/api/auth/login
+      - LOGOUT_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}/api/auth/logout
+      - CHECK_SESSION_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}/api/auth/profile
+    labels:
+      - "traefik.http.routers.mcm-ui.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && !PathPrefix(`/api`)"
+      - "traefik.http.services.mcm-ui.loadbalancer.server.port=8080"
     tty: true
     stdin_open: true
-    ports:
-      - "8081:8080"
     restart: always
-    depends_on:
-      connection-manager-api:
-        condition: service_healthy
 
   connection-manager-migration:
     image: mojaloop/connection-manager-api:local
@@ -40,25 +75,45 @@ services:
       context: .
       dockerfile: Dockerfile
     profiles:
-      - functional
-    env_file: ./test/.env-func
-    environment:
-      - DATABASE_HOST=connection-manager-db
-      - DATABASE_USER=${DBUSER:-mcm}
-      - DATABASE_PASSWORD=${DBPASS:-mcm}
-      - DATABASE_SCHEMA=${DBUSER:-mcm}
-      - VAULT_ENDPOINT=http://vault-dev:8233
-      - VAULT_ROLE_ID_FILE=/vault/tmp/role-id
-      - VAULT_ROLE_SECRET_ID_FILE=/vault/tmp/secret-id
-    volumes:
-      - ./docker/vault/tmp:/vault/tmp
+      - ci
+    env_file:
+      - ./docker/migration.env
     depends_on:
       connection-manager-db:
         condition: service_healthy
-      vault-dev:
-        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+    volumes:
+      - vault-creds:/vault
     command: npm run migrate
     restart: "no"
+
+  connection-manager-migration-full:
+    image: mojaloop/connection-manager-api
+    profiles:
+      - full
+    env_file:
+      - ./docker/migration.env
+    depends_on:
+      connection-manager-db:
+        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
+    volumes:
+      - vault-creds:/vault
+    command: npm run migrate
+    restart: "no"
+
+  connection-manager-api-proxy:
+    image: alpine/socat
+    command: tcp-listen:${PORT:-3001},fork,reuseaddr tcp-connect:host.docker.internal:${PORT:-3001}
+    profiles:
+      - dev
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    labels:
+      - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
+      - "traefik.http.services.mcm-api.loadbalancer.server.port=${PORT:-3001}"
 
   connection-manager-api:
     image: mojaloop/connection-manager-api:local
@@ -67,44 +122,53 @@ services:
       context: .
       dockerfile: Dockerfile
     profiles:
-      - functional
-    env_file: ./test/.env-func
-    environment:
-      - MYSQL_ROOT_PASSWORD=${MYSQL_ROOT_PASSWORD:-moja123}
-      - DATABASE_HOST=connection-manager-db
-      - DATABASE_USER=${DBUSER:-mcm}
-      - DATABASE_PASSWORD=${DBPASS:-mcm}
-      - DATABASE_SCHEMA=${DBUSER:-mcm}
-      - VAULT_ENDPOINT=http://vault-dev:8233
-      - VAULT_ROLE_ID_FILE=/vault/tmp/role-id
-      - VAULT_ROLE_SECRET_ID_FILE=/vault/tmp/secret-id
-      - OPENID_ENABLED=false
-      - OPENID_ENABLE_2FA=false
+      - ci
+    env_file:
+      - ./docker/api.env
+    environment: *api-env
+    labels: *api-labels
     volumes:
-      - ./docker/vault/tmp:/vault/tmp
+      - vault-creds:/vault
+      - ./docker/mcm/resources:/resources:ro
     tty: true
     stdin_open: true
-    ports:
-      - "3001:3001"
     restart: always
     depends_on:
-      vault-dev:
-        condition: service_healthy
+      vault-init:
+        condition: service_completed_successfully
       keycloak:
         condition: service_healthy
       connection-manager-migration:
         condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:3001/api/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 3
-      start_period: 5s
+    healthcheck: *api-healthcheck
+
+  connection-manager-api-full:
+    image: mojaloop/connection-manager-api
+    profiles:
+      - full
+    env_file:
+      - ./docker/api.env
+    environment: *api-env
+    labels: *api-labels
+    volumes:
+      - vault-creds:/vault
+      - ./docker/mcm/resources:/resources:ro
+    tty: true
+    stdin_open: true
+    restart: always
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+      keycloak:
+        condition: service_healthy
+      connection-manager-migration-full:
+        condition: service_completed_successfully
+    healthcheck: *api-healthcheck
 
   connection-manager-db:
     image: mysql:9
     ports:
-      - "3306:3306"
+      - "${DATABASE_PORT:-3306}:3306"
     volumes:
       - ./docker/sql-init/:/docker-entrypoint-initdb.d/
     environment:
@@ -118,36 +182,71 @@ services:
       timeout: 3s
       retries: 20
 
-  vault-dev:
-    image: hashicorp/vault:1.19
+  vault:
+    image: hashicorp/vault:1.20
+    command: server
     restart: always
+    tty: true
+    stdin_open: true
     environment:
-      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8233
       VAULT_ADDR: http://127.0.0.1:8233
-      VAULT_DEV_ROOT_TOKEN_ID: "myroot"
-      VAULT_LOCAL_CONFIG: '{"backend": {"file": {"path": "/vault/file"}}, "default_lease_ttl": "168h", "max_lease_ttl": "720h"}'
-    ports:
-      - "8233:8233"
-    profiles:
-      - functional
+      VAULT_API_ADDR: http://0.0.0.0:8233
+      VAULT_LOCAL_CONFIG: '{"listener": [{"tcp": {"address": "0.0.0.0:8233", "tls_disable": true}}], "storage": {"file": {"path": "/vault/data"}}, "default_lease_ttl": "8760h", "max_lease_ttl": "87600h", "ui": true}'
+    labels:
+      - "traefik.http.routers.vault.rule=Host(`vault.${COMPOSE_DOMAIN:-mcm.localhost}`)"
+      - "traefik.http.services.vault.loadbalancer.server.port=8233"
     volumes:
-      - ./docker/vault/tmp:/vault/tmp
+      - vault-data:/vault/data
+      - vault-creds:/vault/creds
       - ./docker/vault/docker-entrypoint.sh:/usr/local/bin/docker-entrypoint.sh
     cap_add:
       - IPC_LOCK
     healthcheck:
-      test: test -f /tmp/service_started
-      timeout: 1s
-      retries: 20
+      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:8233/v1/sys/health?sealedcode=200&uninitcode=200"]
+      interval: 3s
+      timeout: 2s
+      retries: 10
+      start_period: 3s
 
-  # MailHog for email testing
-  mailhog:
-    image: mailhog/mailhog
-    ports:
-      - "1025:1025"  # SMTP server
-      - "8025:8025"  # Web UI
+  vault-init:
+    build:
+      context: ./docker/vault
+      dockerfile_inline: |
+        FROM alpine:latest
+        RUN apk add --no-cache curl jq
+    environment:
+      VAULT_ADDR: http://vault:8233
+    volumes:
+      - vault-data:/vault/data
+      - vault-creds:/vault/creds
+      - ./docker/vault/vault-init.sh:/vault-init.sh
+    depends_on:
+      vault:
+        condition: service_healthy
+    entrypoint: /vault-init.sh
+    restart: "no"
+
+  volume_explorer:
+    image: alpine
+    command: sh -c 'cp -r /vault/creds/. /creds/ && tail -f /dev/null'
+    volumes:
+      - vault-creds:/vault/creds:ro
+      - ./docker/vault/tmp:/creds:rw
+    depends_on:
+      vault-init:
+        condition: service_completed_successfully
+    restart: "no"
+    profiles:
+      - dev
+      - ci
+
+  mailpit:
+    image: axllent/mailpit:latest
+    labels:
+      - "traefik.http.routers.mailpit.rule=Host(`mailpit.${COMPOSE_DOMAIN:-mcm.localhost}`)"
+      - "traefik.http.services.mailpit.loadbalancer.server.port=8025"
     healthcheck:
-      test: wget --spider --quiet http://localhost:8025
+      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8025/api/v1/info"]
       interval: 10s
       timeout: 5s
       retries: 3
@@ -161,7 +260,7 @@ services:
         target: /template/dfsps-realm.json.template
         mode: 0444
     volumes:
-      - keycloak-import:/work            # writeable volume shared with Keycloak
+      - keycloak-import:/work
     env_file:
       - ./docker/keycloak/dfsp-realm.env
     entrypoint: |
@@ -178,12 +277,15 @@ services:
       - KC_BOOTSTRAP_ADMIN_USERNAME=admin
       - KC_BOOTSTRAP_ADMIN_PASSWORD=admin
       - KC_HEALTH_ENABLED=true
+      - KC_HOSTNAME=keycloak.${COMPOSE_DOMAIN:-mcm.localhost}
+      - KC_HOSTNAME_STRICT=true
+    labels:
+      - "traefik.http.routers.keycloak.rule=Host(`keycloak.${COMPOSE_DOMAIN:-mcm.localhost}`)"
+      - "traefik.http.services.keycloak.loadbalancer.server.port=8080"
     volumes:
       - keycloak-import:/opt/keycloak/data/import
-    ports:
-      - "8080:8080"
     depends_on:
-      mailhog:
+      mailpit:
         condition: service_healthy
       prepare-keycloak-realm:
         condition: service_completed_successfully

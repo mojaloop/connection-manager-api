@@ -22,20 +22,28 @@
  * 
  **************************************************************************/
 
-const axios = require('axios').default;
-const qs = require('qs');
+import { CookieJar } from 'tough-cookie';
 
 export type HeaderType = { [key:string]:string; };
 
-export type OauthConfig = {
-  url: string,
+export type LoginConfig = {
+  username: string,
+  password: string,
+  baseUrl: string
+}
+
+export type OAuthConfig = {
   clientId: string,
-  clientSecret: string
+  clientSecret: string,
+  tokenUrl: string
 }
 
 export type ApiHelperOptions = {
-  oauth?: OauthConfig
+  login?: LoginConfig,
+  oauth?: OAuthConfig
 }
+
+const cookieJar = new CookieJar();
 
 export enum MethodEnum {
   POST = 'POST',
@@ -46,7 +54,7 @@ export enum MethodEnum {
 }
 
 export type RequestConfig = {
-  method: MethodEnum,
+  method: MethodEnum | string,
   url: string,
   body?: string,
   headers?: HeaderType
@@ -54,7 +62,8 @@ export type RequestConfig = {
 
 export class ApiHelper {
   private _options: ApiHelperOptions
-  private _token: string | undefined
+  private _authenticated: boolean = false
+  private _accessToken: string | null = null
 
   constructor (options: ApiHelperOptions) {
     this._options = { ...options };
@@ -79,47 +88,57 @@ export class ApiHelper {
   }
 
   async sendRequest (config: RequestConfig) {
-    if (this._token == null && this._options?.oauth != null) {
-      this._token = await requestToken({
-        url: this._options?.oauth?.url,
-        clientId: this._options?.oauth?.clientId,
-        clientSecret: this._options?.oauth?.clientSecret
-      })
+    if (!this._authenticated && this._options?.login != null) {
+      await performLogin(this._options.login);
+      this._authenticated = true;
     }
 
-    const requestOptions = {
+    if (!this._accessToken && this._options?.oauth != null) {
+      this._accessToken = await fetchOAuthToken(this._options.oauth);
+    }
+
+    const cookies = await cookieJar.getCookieString(config.url);
+    const headers = processHeaders(config?.headers);
+    if (cookies) {
+      headers['Cookie'] = cookies;
+    }
+    if (this._accessToken) {
+      headers['Authorization'] = `Bearer ${this._accessToken}`;
+    }
+
+    const response = await fetch(config.url, {
       method: config.method,
-      url: config.url,
-      data: config?.body || '{}',
-      headers: processHeaders(config?.headers, this._token),
-      validateStatus: (status: number) => {
-        return status < 900; // Reject only if the status code is greater than or equal to 900
-      }
-    };
+      headers: headers,
+      body: config?.body,
+      redirect: 'manual'
+    });
 
-    let responseObj;
-
-    try {
-      // Allow Axios to complete its housekeeping and be ready to track new connections
-      await process.nextTick(() => {});
-      responseObj = await axios(requestOptions);
-    } catch (error) {
-      throw error;
+    for (const cookie of response.headers.getSetCookie()) {
+      await cookieJar.setCookie(cookie, config.url);
     }
 
-    return responseObj;
+    let data: any;
+    const contentType = response.headers.get('content-type');
+    if (contentType?.includes('application/json')) {
+      data = await response.json();
+    } else {
+      data = await response.text();
+    }
+
+    return {
+      status: response.status,
+      data: data,
+      headers: Object.fromEntries(response.headers.entries())
+    };
   }
 };
 
 export default ApiHelper;
 
-const processHeaders = (rawHeaders: HeaderType | undefined, bearerToken?: string | undefined): HeaderType => {
+const processHeaders = (rawHeaders: HeaderType | undefined): HeaderType => {
   let headers: { [key:string]:string; } = {};
 
   if (rawHeaders == null) {
-    if (bearerToken) {
-      headers['Authorization'] = `Bearer ${bearerToken}`
-    }
     return headers;
   }
 
@@ -131,45 +150,111 @@ const processHeaders = (rawHeaders: HeaderType | undefined, bearerToken?: string
     headers = rawHeaders;
   }
 
-  if (bearerToken) {
-    headers['Authorization'] = `Bearer ${bearerToken}`
-  }
-
   return headers;
 };
 
-const requestToken = async (options?: OauthConfig): Promise<string|undefined> => {
-  if (options == null) {
-    return;
-  }
-  const data = qs.stringify({
-    grant_type: 'client_credentials',
-    client_id: options.clientId,
-    client_secret: options.clientSecret,
-    scope: 'openid'
-  });
-
-  const config = {
-    method: 'post',
-    url: options.url,
-    headers: {
-      'Content-Type': 'application/x-www-form-urlencoded'
-    },
-    data: data
-  };
+const performLogin = async (loginConfig: LoginConfig): Promise<void> => {
+  const loginUrl = `${loginConfig.baseUrl}/auth/login?return_to=${encodeURIComponent(loginConfig.baseUrl)}`;
 
   try {
-    // Allow Axios to complete its housekeeping and be ready to track new connections
-    await process.nextTick(() => {});
-    const response = await axios(config);
+    let response = await fetch(loginUrl, {
+      method: 'GET',
+      redirect: 'manual'
+    });
 
-    if (response?.status != 200) throw new Error('Unable to attain a valid Bearer Token!');
-    
-    // return a new string
-    const token = `${response?.data?.access_token}`;
-    return token;
+    for (const cookie of response.headers.getSetCookie()) {
+      await cookieJar.setCookie(cookie, loginUrl);
+    }
+
+    if (response.status === 302 || response.status === 303) {
+      const keycloakAuthUrl = response.headers.get('location')!;
+
+      response = await fetch(keycloakAuthUrl, {
+        method: 'GET',
+        redirect: 'manual'
+      });
+
+      for (const cookie of response.headers.getSetCookie()) {
+        await cookieJar.setCookie(cookie, keycloakAuthUrl);
+      }
+
+      const html = await response.text();
+      const actionUrl = extractFormAction(html);
+      const keycloakCookies = await cookieJar.getCookieString(keycloakAuthUrl);
+
+      const formData = new URLSearchParams();
+      formData.append('username', loginConfig.username);
+      formData.append('password', loginConfig.password);
+
+      response = await fetch(actionUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Cookie': keycloakCookies || ''
+        },
+        body: formData.toString(),
+        redirect: 'manual'
+      });
+
+      for (const cookie of response.headers.getSetCookie()) {
+        await cookieJar.setCookie(cookie, actionUrl);
+      }
+
+      if (response.status === 302 || response.status === 303) {
+        const callbackUrl = response.headers.get('location')!;
+        const callbackCookies = await cookieJar.getCookieString(callbackUrl);
+
+        response = await fetch(callbackUrl, {
+          method: 'GET',
+          headers: {
+            'Cookie': callbackCookies || ''
+          },
+          redirect: 'manual'
+        });
+
+        for (const cookie of response.headers.getSetCookie()) {
+          await cookieJar.setCookie(cookie, callbackUrl);
+        }
+      }
+    }
   } catch (error) {
-    console.error(error);
+    console.error('Login failed:', error);
+    throw error;
+  }
+};
+
+const extractFormAction = (html: string): string => {
+  const match = html.match(/action="([^"]+)"/);
+  if (match && match[1]) {
+    return match[1].replace(/&amp;/g, '&');
+  }
+  throw new Error('Could not find form action in HTML');
+};
+
+const fetchOAuthToken = async (oauthConfig: OAuthConfig): Promise<string> => {
+  try {
+    const formData = new URLSearchParams();
+    formData.append('grant_type', 'client_credentials');
+    formData.append('client_id', oauthConfig.clientId);
+    formData.append('client_secret', oauthConfig.clientSecret);
+
+    const response = await fetch(oauthConfig.tokenUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded'
+      },
+      body: formData.toString()
+    });
+
+    const data = await response.json();
+
+    if (!data.access_token) {
+      throw new Error('No access token in response');
+    }
+
+    return data.access_token;
+  } catch (error) {
+    console.error('OAuth token fetch failed:', error);
     throw error;
   }
 };

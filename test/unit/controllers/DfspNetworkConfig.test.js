@@ -25,7 +25,6 @@
  --------------
  ******/
 
-require('../test-env-setup');
 
 const DfspNetworkConfigController = require('#src/controllers/DfspNetworkConfig');
 const utils = require('../../../src/utils/writer.js');

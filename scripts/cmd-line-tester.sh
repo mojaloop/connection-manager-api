@@ -1,7 +1,7 @@
 #!/bin/zsh
 
 # SETUP
-export SERVER=${SERVER:-"localhost:3001"}
+export SERVER=${SERVER:-"mcm.localhost"}
 export TMPDIR=${TMPDIR:-/tmp}
 echo TMPDIR:$TMPDIR
 cd $TMPDIR

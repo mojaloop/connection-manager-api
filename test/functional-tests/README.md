@@ -1,114 +1,90 @@
 # Functional Tests
 
+## Test Infrastructure
+
+Functional tests run against a full stack environment managed by Docker Compose. The infrastructure includes:
+
+| Service       | URL                          | Description                        |
+|---------------|------------------------------|------------------------------------|
+| MCM API       | http://mcm.localhost/api     | Connection Manager API             |
+| MCM UI        | http://mcm.localhost         | Web UI (dev/full profiles only)    |
+| Keycloak      | http://keycloak.mcm.localhost| Identity provider                  |
+| Mailpit       | http://mailpit.mcm.localhost | Email testing (captures all emails)|
+| Vault         | http://vault.mcm.localhost   | PKI and secrets management         |
+| MySQL         | localhost:3306               | Database                           |
+| Traefik       | localhost:8090               | Reverse proxy dashboard            |
+
+### Test Helpers
+
+- `util/api-helper.ts` - HTTP client with OAuth support (cookie and client credentials)
+- `util/keycloak-helper.ts` - Keycloak interactions (password setup flow)
+- `util/mailpit-helper.ts` - Email retrieval and parsing
+
 ## Configuration
 
-| Environment Variable    | Description                             | Default                   |
-| ----------------------- | --------------------------------------- | ------------------------- |
-| APP_ENDPOINT            | Endpoint for MCM API                    | http://localhost:3001/api |
-| OAUTH2_ISSUER           | Endpoint for Oauth Token Issuer Service | n/a                       |
-| APP_OAUTH_CLIENT_KEY    | OAuth Client-credential ID              | n/a                       |
-| APP_OAUTH_CLIENT_SECRET | OAuth Client-credential Secret          | n/a                       |
+Configuration is managed via `test-env-setup.js` (loaded automatically by Jest):
+
+| Environment Variable  | Description                  | Default                      |
+| --------------------- | ---------------------------- | ---------------------------- |
+| APP_ENDPOINT          | Endpoint for MCM API         | http://mcm.localhost/api     |
+| APP_OAUTH_USERNAME    | OAuth username for login     | admin                        |
+| APP_OAUTH_PASSWORD    | OAuth password for login     | admin                        |
+| MAILPIT_ENDPOINT      | Endpoint for Mailpit service | http://mailpit.mcm.localhost |
 
 ## Executing Tests
 
-### OAuth Disabled
+### Using CI profile (containerized API)
 
-1. Start the MCM API Service from root with OAuth disabled
+```bash
+# From repo root
+docker compose --profile ci up -d --wait
+cd test/functional-tests
+npm install
+npm test
+```
 
-    From the root of the project open .env and set AUTH_ENABLED=false
+### Using dev profile (local API)
 
-    ```bash
-    npm i
-    npm run backend:start
-    npm start
-    ```
+```bash
+# Terminal 1: Start infrastructure and API
+docker compose --profile dev up -d --wait
+npm run migrate
+npm start
 
-2. Run Functional Tests
+# Terminal 2: Run tests
+cd test/functional-tests
+npm install
+npm test
+```
 
-    ```bash
-    cd ./test/functional-tests
-    ```
+## Writing Tests
 
-    Make sure in the local .env file and the file is empty, or if there are any oauth entries, they are commented out.
+Tests are located in `tests/` directory. Each test file should:
 
-    ```bash
-    npm i
-    npm test
-    ```
+1. Use `ApiHelper` for API requests with authentication
+2. Use `MailpitHelper` if testing email flows
+3. Use `KeycloakHelper` if testing user onboarding flows
 
-### OAuth Disabled with MCM API running on Docker
+Example structure:
+```typescript
+import { ApiHelper, MethodEnum } from '../util/api-helper';
+import Config from '../util/config';
 
-1. Start the MCM API Service from Docker with OAuth disabled.
+describe('Feature Tests', () => {
+  const apiHelper = new ApiHelper({
+    login: {
+      username: Config.username,
+      password: Config.password,
+      baseUrl: Config.mcmEndpoint
+    }
+  });
 
-    From the root of the project
-
-    ```bash
-    npm i
-    npm run backend:start
-    ```
-
-    Build MCM API Service Docker image
-
-    ```bash
-    docker build -t connection-manager-api:test .
-    ```
-
-    Run MCM API Service Docker image
-
-    ```bash
-    VAULT_DIR="`pwd`/.vault" &&
-    MCM_ENV="../docker/functional-tests.env" &&
-    docker run --rm -it --env-file $MCM_ENV -v $VAULT_DIR:/tmp/vault -p 3001:3001 -p 9229:9229 connection-manager-api:test
-    ```
-
-    Note:
-    - if you are running on MacOS, uncomment the following lines from the [functional-test.env](../docker/functional-tests.env).
-
-        ```bash
-        # DATABASE_HOST=host.docker.internal
-        # VAULT_ENDPOINT=http://host.docker.internal:8233
-        ```
-
-    - if you are running on linux, add `--net=host` to the Docker run command
-  
-        ```bash
-        docker run --net=host --rm -it --env-file $MCM_ENV -v $VAULT_DIR:/tmp/vault -p 3001:3001 -p 9229:9229 connection-manager-api:test
-        ```
-
-2. See [#OAuth Disabled - 2. Run Functional Tests](#oauth-disabled) above.
-
-### OAuth Enabled
-
-1. Start the MCM API Service from root with OAuth enabled. Make sure you are connected to the vpn of the environment from where you plan to get the ISKM token.
-
-    From the root of the project
-
-    1.1 Open .env in this directory and set AUTH_ENABLED=true
-
-    1.2 Open Vault for product-dev environment. Go to secrets->secret->wso2->adminpwd and copy the admin password for wso2 ISKM
-
-    1.3 Open wso2 ISKM. Click List in Service Providers. Click MCM_Portal and click Edit
-
-    1.4. Open Inbound Authentication COnfiguration -> OAuth/Open ID Connect Configuration and copy OAuth Client Key and OAuth Client Secret and paste it in the APP_OAUTH_CLIENT_KEY, APP_OAUTH_CLIENT_SECRET variables in .env and functional_tests/.env file.
-
-    1.5. Fill in the OAUTH2_ISSUER with the corresponding env. For example if you are using product dev env, it should be ISKM.dev.product.mbox-dev.io/oauth2/token
-
-    1.6. Go to mcm k8s cluster, acess connection-manager-secret and copy the certificate and paste its contents as a single line in the value for EMBEDDED_CERTIFICATE variable.
-
-    1.7 Make sure the 4 env vars are updated in both .env
-
-    ```bash
-    npm i
-    npm run backend:start
-    npm start
-    ```
-
-2. Run Functional Tests
-
-  2.1 Make sure APP_OAUTH_CLIENT_KEY and APP_OAUTH_CLIENT_SECRET are populated with the values from the steps described in the section above.
-  
-  ```bash
-  cd ./test/functional-tests
-  npm i
-  npm test
-  ```
+  test('should do something', async () => {
+    const response = await apiHelper.sendRequest({
+      method: MethodEnum.GET,
+      url: `${Config.mcmEndpoint}/endpoint`,
+    });
+    expect(response.status).toBe(200);
+  });
+});
+```
