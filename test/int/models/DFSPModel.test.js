@@ -66,7 +66,7 @@ describe("DFSPModel", () => {
     it("should return updated DFSP object when update is successful", async () => {
       const dfspId = "existent";
       const newDfsp = { name: "Updated Name" };
-      const dfsp = { dfsp_id: dfspId, name: "Updated Name", monetaryZoneId: "USD", security_group: "group1" };
+      const dfsp = { dfsp_id: dfspId, name: "Updated Name", monetaryZoneId: "USD", isProxy: false };
 
       knex.table.mockReturnValue({
         where: () => ({
@@ -81,8 +81,7 @@ describe("DFSPModel", () => {
         dfspId: dfsp.dfsp_id,
         name: dfsp.name,
         monetaryZoneId: dfsp.monetaryZoneId,
-        isProxy: dfsp.isProxy,
-        securityGroup: dfsp.security_group
+        isProxy: dfsp.isProxy
       });
     });
 

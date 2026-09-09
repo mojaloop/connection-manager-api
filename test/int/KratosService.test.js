@@ -40,7 +40,9 @@ describe('KratosService Integration Tests', () => {
       expect(fetched).toBeTruthy();
       expect(fetched.id).toBe(identityId);
       expect(fetched.traits.email).toBe(testDfsp.email);
-      expect(fetched.traits.roles).toEqual([`${Constants.IAM.DFSP_ROLE_PREFIX}${testDfsp.dfspId}`]);
+      // The identity says who someone is; what they may do is an edge in the
+      // permission graph, so no role ever appears in a trait
+      expect(fetched.traits.roles).toBeUndefined();
       expect(fetched.metadata_public.dfspId).toBe(testDfsp.dfspId);
       expect(fetched.verifiable_addresses?.[0]?.value).toBe(testDfsp.email);
       expect(fetched.verifiable_addresses?.[0]?.verified).toBe(false);
@@ -53,14 +55,13 @@ describe('KratosService Integration Tests', () => {
       expect(second.identityId).toBe(first.identityId);
     });
 
-    it('creates a hub admin (no dfspId): empty roles, no dfspId metadata', async () => {
+    it('creates a hub admin (no dfspId): the email trait alone, no dfspId metadata', async () => {
       const adminEmail = `admin-${Date.now()}@example.com`;
       const result = await KratosService.createIdentity(adminEmail, null);
       identityId = result.identityId;
 
       const fetched = await KratosService.findIdentityByEmail(adminEmail);
-      expect(fetched.traits.email).toBe(adminEmail);
-      expect(fetched.traits.roles).toEqual([]);
+      expect(fetched.traits).toEqual({ email: adminEmail });
       expect(fetched.metadata_public?.dfspId).toBeUndefined();
     });
   });

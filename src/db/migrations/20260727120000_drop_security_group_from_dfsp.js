@@ -24,16 +24,31 @@
  --------------
  ******/
 
-'use strict';
+/**
+ * A DFSP's operators are the identities related to it in Keto, so the group
+ * name a DFSP once carried grants nothing and is not read anywhere.
+ *
+ * @param { import("knex").Knex } knex
+ * @returns { Promise<void> }
+ */
+exports.up = function (knex) {
+  return knex.schema.hasColumn('dfsps', 'security_group').then((exists) => {
+    if (!exists) return undefined;
+    return knex.schema.table('dfsps', function (table) {
+      table.dropColumn('security_group');
+    });
+  });
+};
 
 /**
- * Puts this service's guard on the request, so a handler asks it what the
- * caller may see of a type and filters its rows by that. What the answer is
- * built from, and how it arrived, is the guard's business.
- *
- * @param {import('@mojaloop/authz').Guard} authz  built from this service's document
+ * @param { import("knex").Knex } knex
+ * @returns { Promise<void> }
  */
-exports.createHeaderTrustMiddleware = (authz) => (req, res, next) => {
-  req.authz = authz;
-  next();
+exports.down = function (knex) {
+  return knex.schema.hasColumn('dfsps', 'security_group').then((exists) => {
+    if (exists) return undefined;
+    return knex.schema.table('dfsps', function (table) {
+      table.string('security_group', 256);
+    });
+  });
 };

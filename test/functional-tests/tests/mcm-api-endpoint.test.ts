@@ -82,15 +82,6 @@ describe('MCM API Tests', () => {
       // set the dfspId value
       dfspId = addDFSPResponse.id;
     }
-
-    // Test if we can generate credentials for the DFSP
-    const credentialsResponse = await apiHelper.sendRequest({
-      method: MethodEnum.POST,
-      url:`${Config.mcmEndpoint}/dfsps/${dfspId}/credentials`,
-      headers: {
-        'Content-Type': 'application/json'
-      }
-    });
   });
 
   afterEach(() => {

@@ -22,6 +22,7 @@ const PkiService = require('./PkiService');
 const NotFoundError = require('../errors/NotFoundError');
 const ValidationError = require('../errors/ValidationError');
 const { switchId, switchEmail } = require('../constants/Constants');
+const { EVERYTHING } = require('@mojaloop/authz');
 const { logger } = require('../log/logger');
 
 const log = logger.child({ component: 'JWSCertsService' });
@@ -54,8 +55,9 @@ exports.createDfspExternalJWSCerts = async (ctx, body, sourceDfspId) => {
     throw new ValidationError(`Invalid body ${body}`);
   }
 
-  // Filter out the DFSPs that are not external
-  const nativeDfsps = await PkiService.getDFSPs();
+  // Filter out the DFSPs that are not external. Which DFSPs are native is a
+  // property of the deployment, so this read is unscoped.
+  const nativeDfsps = await PkiService.getDFSPs(ctx, EVERYTHING);
   const nativeDfspIdList = nativeDfsps.map(dfsp => dfsp.id);
   const externalDfspList = body.filter(dfspJwsItem => !nativeDfspIdList.includes(dfspJwsItem.dfspId));
 

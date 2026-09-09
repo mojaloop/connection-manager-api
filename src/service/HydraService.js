@@ -46,7 +46,7 @@ const getOAuth2Client = () => {
 
 const generateSecret = () => crypto.randomBytes(32).toString('base64url');
 
-// Hydra SDK expects snake_case fields, including an explicit client_id.
+// Hydra SDK expects snake_case fields, including an explicit client_id
 const buildClientBody = (dfspId, clientSecret) => ({
   client_id: dfspId,
   client_secret: clientSecret,
@@ -115,7 +115,7 @@ exports.rotateClientSecret = async (dfspId) => {
 };
 
 /**
- * Deletes the Hydra OAuth2 client for a DFSP. No-op if it doesn't exist.
+ * Deletes the Hydra OAuth2 client for a DFSP. No-op when absent.
  *
  * @param {string} dfspId
  */

@@ -1,0 +1,11 @@
+{
+  "resourceNames": {
+    "Participant": {
+      "label": "Participant",
+      "description": "A financial institution connected to the hub",
+      "members": [
+        { "service": "mcm", "type": "dfsps" }
+      ]
+    }
+  }
+}

@@ -12,7 +12,6 @@ exports.seed = async (knex) => {
                 dfsp_id,
                 name: dfsp_id,
                 monetaryZoneId: monetaryZoneId?.length === 3 ? monetaryZoneId : null,
-                security_group: `Application/DFSP:${dfsp_id}`,
                 isProxy: isProxy === 'proxy'
             }))
         ).onConflict('dfsp_id').merge();

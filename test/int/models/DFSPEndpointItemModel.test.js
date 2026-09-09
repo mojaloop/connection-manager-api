@@ -152,7 +152,9 @@ describe('DFSPEndpointItemModel', () => {
       knex.table.mockReturnValue({
         join: jest.fn().mockReturnValue({
           where: jest.fn().mockReturnValue({
-            select: jest.fn().mockResolvedValue(mockRows)
+            modify: jest.fn().mockReturnValue({
+              select: jest.fn().mockResolvedValue(mockRows)
+            })
           })
         })
       });

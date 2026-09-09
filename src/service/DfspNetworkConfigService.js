@@ -324,8 +324,8 @@ exports.getDFSPIngressUrls = async (ctx, dfspId) => {
   return DFSPEndpointItemModel.findObjectByDirectionType('INGRESS', 'URL', dfspId);
 };
 
-exports.getUnprocessedEndpointItems = async ctx => {
-  const items = await DFSPEndpointItemModel.findAllEnvState('NEW');
+exports.getUnprocessedEndpointItems = async (ctx, visible) => {
+  const items = await DFSPEndpointItemModel.findAllEnvState('NEW', visible.restricted ? visible.ids : undefined);
   return items;
 };
 
@@ -504,10 +504,10 @@ exports.uploadDfspStatesStatus = async (ctx, dfspId, body) => {
   }
 };
 
-exports.getAllDfspsStatesStatus = async (ctx) => {
+exports.getAllDfspsStatesStatus = async (ctx, visible) => {
   try {
     log.verbose('getAllDfspsStatesStatus...');
-    const rawData = await DFSPModel.findAllWithStatesStatus();
+    const rawData = await DFSPModel.findAllWithStatesStatus(visible.restricted ? visible.ids : undefined);
 
     const dfsps = rawData.map(row => {
       const statesStatus = [];

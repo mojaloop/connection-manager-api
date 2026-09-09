@@ -84,12 +84,14 @@ exports.delete = async (id) => {
 };
 
 /**
- * Returns a list of all Environment items with a specific state
+ * Returns a list of all Environment items with a specific state, restricted to
+ * the given DFSP ids when they are supplied
  */
-exports.findAllEnvState = async (state) => {
+exports.findAllEnvState = async (state, dfspIds) => {
   const rawObjects = await runQuery((knex) => knex.table(ENDPOINT_ITEMS_TABLE)
     .join('dfsps', `${ENDPOINT_ITEMS_TABLE}.dfsp_id`, '=', 'dfsps.id')
     .where(`${ENDPOINT_ITEMS_TABLE}.state`, state)
+    .modify((query) => dfspIds && query.whereIn('dfsps.dfsp_id', dfspIds))
     .select(`${ENDPOINT_ITEMS_TABLE}.*`), 'findEndpointItemsJoinDfspsByState');
   const endpoints = Promise.all(rawObjects.map(async row => rowToObject(row)));
   return endpoints;

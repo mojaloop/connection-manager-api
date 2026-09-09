@@ -30,24 +30,6 @@ const { logger } = require('../log/logger');
 const log = logger.child({ component: 'PkiService' });
 
 /**
- * Scopes a DFSP list to the caller using the gateway-supplied roles
- * (X-Roles header): the hub-admin role sees everything, others see the
- * DFSPs of their dfsp:{id} roles (a user may hold several, e.g. system
- * integrators).
- */
-const filterDfspsForUser = (allDfsps, user) => {
-  if (!user?.roles) return allDfsps;
-  if (user.roles.includes(Constants.IAM.HUB_ADMIN_ROLE)) return allDfsps;
-
-  const prefix = Constants.IAM.DFSP_ROLE_PREFIX;
-  const allowedDfspIds = user.roles
-    .filter(r => r.startsWith(prefix))
-    .map(r => r.slice(prefix.length));
-
-  return allDfsps.filter(dfsp => allowedDfspIds.includes(dfsp.id));
-};
-
-/**
  * Creates an entry to store DFSP related info
  * Returns the newly created object id
  *
@@ -60,15 +42,11 @@ exports.createDFSP = async (ctx, body) => {
   await DfspIamService.provisionDfsp(body.dfspId, body.email);
 
   try {
-    const regex = / /gi;
-    const dfspIdNoSpaces = body.dfspId ? body.dfspId.replace(regex, '-') : null;
-
     const values = {
       dfsp_id: body.dfspId,
       name: body.name,
       monetaryZoneId: body.monetaryZoneId ? body.monetaryZoneId : undefined,
-      isProxy: body.isProxy,
-      security_group: body.securityGroup || `Application/DFSP:${dfspIdNoSpaces}`
+      isProxy: body.isProxy
     };
 
     await DFSPModel.create(values);
@@ -100,9 +78,9 @@ exports.createDFSPWithCSR = async (ctx, body) => {
  *
  * returns DFSP[]
  **/
-exports.getDFSPs = async (ctx, user) => {
+exports.getDFSPs = async (ctx, visible) => {
   const rows = await DFSPModel.findAll();
-  return filterDfspsForUser(rows.map(r => exports.dfspRowToObject(r)), user);
+  return visible.narrow(rows.map(r => exports.dfspRowToObject(r)), dfsp => dfsp.id);
 };
 
 /**
@@ -139,8 +117,7 @@ exports.updateDFSP = async (ctx, dfspId, newDfsp) => {
   const values = {
     name: newDfsp.name,
     monetaryZoneId: newDfsp.monetaryZoneId,
-    isProxy: newDfsp.isProxy,
-    security_group: newDfsp.securityGroup
+    isProxy: newDfsp.isProxy
   };
 
   return DFSPModel.update(dfspId, values);
@@ -198,9 +175,9 @@ exports.setDFSPca = async (ctx, dfspId, body) => {
   return values;
 };
 
-exports.getDfspsByMonetaryZones = async (ctx, monetaryZoneId, user) => {
-  const dfsps = await DFSPModel.getDfspsByMonetaryZones(monetaryZoneId);
-  return filterDfspsForUser(dfsps.map(r => exports.dfspRowToObject(r)), user);
+exports.getDfspsByMonetaryZones = async (ctx, monetaryZoneId, visible) => {
+  const rows = await DFSPModel.getDfspsByMonetaryZones(monetaryZoneId);
+  return visible.narrow(rows.map(r => exports.dfspRowToObject(r)), dfsp => dfsp.id);
 };
 
 exports.getDFSPca = async (ctx, dfspId) => {
@@ -241,6 +218,5 @@ exports.dfspRowToObject = (row) => {
     name: row.name,
     monetaryZoneId: row.monetaryZoneId ? row.monetaryZoneId : undefined,
     isProxy: row.isProxy,
-    securityGroup: row.security_group,
   };
 };

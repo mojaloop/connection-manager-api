@@ -1,8 +1,12 @@
-openapi: 3.0.1
+openapi: 3.1.0
 info:
   title: Connection Manager API
   description: Connection Manager API
   version: 1.6.0
+# Permission names are prefixed with this service identity: mcm.<operationId>
+x-authz:
+  service: mcm
+  resourceTypes: [dfsps]
 servers:
   - url: /api
 tags:
@@ -37,6 +41,7 @@ paths:
       - Health
       summary: Health check endpoint that verifies service and database connectivity
       operationId: getHealth
+      security: []
       responses:
         200:
           description: Service is healthy
@@ -47,13 +52,15 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: healthy
+                    examples:
+                    - healthy
                   timestamp:
                     type: string
                     format: date-time
                   database:
                     type: string
-                    example: connected
+                    examples:
+                    - connected
         503:
           description: Service is unhealthy
           content:
@@ -63,16 +70,17 @@ paths:
                 properties:
                   status:
                     type: string
-                    example: unhealthy
+                    examples:
+                    - unhealthy
                   timestamp:
                     type: string
                     format: date-time
                   database:
                     type: string
-                    example: disconnected
+                    examples:
+                    - disconnected
                   error:
                     type: string
-      x-swagger-router-controller: HealthController
 
   /hub/endpoints:
     get:
@@ -80,6 +88,9 @@ paths:
       - Hub-Endpoint-configuration
       summary: Returns all Hub endpoints
       operationId: getHubEndpoints
+      # Hub-owned endpoint items, not rows belonging to any DFSP
+      x-authz:
+        scopedBy: []
       responses:
         200:
           description: successful operation
@@ -90,16 +101,17 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - everyone
-        - pta
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
   /hub/endpoints/ingress/ips:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get the Hub Ingress IPs
       operationId: getHubIngressIps
+      # Hub-owned endpoint items, not rows belonging to any DFSP
+      x-authz:
+        scopedBy: []
 
       responses:
         200:
@@ -111,9 +123,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointIp'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - Hub-Endpoint-configuration
@@ -135,17 +146,17 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/endpoints/ingress/ips/{epId}:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get an endpoint entry
       operationId: getHubIngressIpEndpoint
+      # The endpoint id lives inside the hub singleton, so it is business data
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -161,14 +172,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
       summary: Update an endpoint entry
       operationId: updateHubIngressIpEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -190,16 +202,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
       summary: Delete an endpoint entry
       operationId: deleteHubIngressIpEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -211,16 +222,17 @@ paths:
         204:
           description: successful operation
           content: {}
-      x-swagger-router-controller: HubNetworkConfig
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/endpoints/ingress/urls:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get the Hub Ingress URLs
       operationId: getHubIngressUrls
+      # Hub-owned endpoint items, not rows belonging to any DFSP
+      x-authz:
+        scopedBy: []
 
       responses:
         200:
@@ -232,9 +244,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointURL'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - Hub-Endpoint-configuration
@@ -256,17 +267,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointURL'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/endpoints/ingress/urls/{epId}:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get an endpoint entry
       operationId: getHubIngressUrlEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -282,14 +292,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
       summary: Update an endpoint entry
       operationId: updateHubIngressUrlEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -311,16 +322,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
       summary: Delete an endpoint entry
       operationId: deleteHubIngressUrlEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -332,16 +342,17 @@ paths:
         204:
           description: successful operation
           content: {}
-      x-swagger-router-controller: HubNetworkConfig
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/endpoints/egress/ips:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get the Hub Egress IPs
       operationId: getHubEgressIps
+      # Hub-owned endpoint items, not rows belonging to any DFSP
+      x-authz:
+        scopedBy: []
 
       responses:
         200:
@@ -353,9 +364,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointIp'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - Hub-Endpoint-configuration
@@ -377,17 +387,16 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/endpoints/egress/ips/{epId}:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get an endpoint entry
       operationId: getHubEgressIpEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -403,14 +412,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
       summary: Update an endpoint entry
       operationId: updateHubEgressIpEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -432,16 +442,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
       summary: Delete an endpoint entry
       operationId: deleteHubEgressIpEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -453,16 +462,16 @@ paths:
         204:
           description: successful operation
           content: {}
-      x-swagger-router-controller: HubNetworkConfig
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/endpoints/{epId}:
     get:
       tags:
       - Hub-Endpoint-configuration
       summary: Get an endpoint entry
       operationId: getHubEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -478,14 +487,15 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
       summary: Update an endpoint entry
       operationId: updateHubEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -507,16 +517,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      x-swagger-router-controller: HubNetworkConfig
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
       summary: Delete an endpoint entry
       operationId: deleteHubEndpoint
+      x-authz:
+        scopedBy: []
       parameters:
       - name: epId
         in: path
@@ -528,10 +537,8 @@ paths:
         204:
           description: successful operation
           content: {}
-      x-swagger-router-controller: HubNetworkConfig
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/servercerts:
     get:
       tags:
@@ -551,9 +558,8 @@ paths:
           description: server certs not set
           content: {}
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: HubServerCerts
+      - session: []
+      - machineToken: []
     post:
       tags:
       - Hub-server-certificates-configuration
@@ -574,11 +580,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerCert'
-      x-swagger-router-controller: HubServerCerts
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
     delete:
       tags:
       - Hub-server-certificates-configuration
@@ -590,10 +593,8 @@ paths:
         204:
           description: no content
           content: {}
-      x-swagger-router-controller: HubServerCerts
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /hub/ca:
     get:
       tags:
@@ -612,11 +613,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-        - dfsp
-      x-swagger-router-controller: HubCAController
+      - session: []
+      - machineToken: []
     post:
       tags:
       - Hub-Certificate-Authority
@@ -642,10 +640,7 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: HubCAController
-      x-codegen-request-body-name: body
+      - session: []
     put:
       tags:
       - Hub-Certificate-Authority
@@ -681,10 +676,7 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: HubCAController
-      x-codegen-request-body-name: body
+      - session: []
     delete:
       tags:
       - Hub-Certificate-Authority
@@ -699,9 +691,7 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: HubCAController
+      - session: []
   /hub/jwscerts:
     get:
       tags:
@@ -720,10 +710,8 @@ paths:
           description: Hub JWS certs not set
           content: {}
       security:
-        - OAuth2:
-            - mta
-            - pta
-      x-swagger-router-controller: JWSCerts
+      - session: []
+      - machineToken: []
     post:
       tags:
         - JWS-certificates-configuration
@@ -745,11 +733,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/JWSCert'
       security:
-        - OAuth2:
-            - mta
-            - pta
-      x-swagger-router-controller: JWSCerts
-      x-codegen-request-body-name: body
+      - session: []
   /hub/jwscerts/rotate:
     put:
       tags:
@@ -771,10 +755,7 @@ paths:
                   error:
                     type: string
       security:
-        - OAuth2:
-            - mta
-            - pta
-      x-swagger-router-controller: JWSCerts
+      - session: []
   /dfsps/jwscerts:
     get:
       tags:
@@ -782,6 +763,10 @@ paths:
       summary: get JWS certificates for all DFSPs
       description: TBD
       operationId: getAllDfspJWSCerts
+      # The peer directory: every DFSP's public JWS key, which every DFSP
+      # needs to verify the others' signatures
+      x-authz:
+        scopedBy: []
 
       responses:
         200:
@@ -796,11 +781,8 @@ paths:
           description: JWS certs not set
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-        - dfsp
-      x-swagger-router-controller: JWSCerts
+      - session: []
+      - machineToken: []
   /external-dfsps/jwscerts:
     post:
       tags:
@@ -808,6 +790,10 @@ paths:
       summary: post external JWS certificates
       description: TBD
       operationId: createDfspExternalJWSCerts
+      # The reporting DFSP is recorded against every entry, and it is the
+      # caller's own; the scope is where the handler reads it from
+      x-authz:
+        scopedBy: [dfsps]
       requestBody:
         description: TBD
         content:
@@ -827,17 +813,15 @@ paths:
                 items:
                   $ref: '#/components/schemas/DFSPJWSCert'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: JWSCerts
-      x-codegen-request-body-name: body
+      - machineToken: []
   /dfsps:
     get:
       tags:
       - dfsp-config
       summary: Returns a list with all the DFSPs
       operationId: getDFSPs
+      x-authz:
+        scopedBy: [dfsps]
 
       responses:
         200:
@@ -849,10 +833,7 @@ paths:
                 items:
                   $ref: '#/components/schemas/DFSP'
       security:
-      - OAuth2:
-        - everyone
-        - pta
-      x-swagger-router-controller: Pki
+      - session: []
     post:
       tags:
       - dfsp-config
@@ -877,11 +858,8 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObjectCreatedResponse'
-      x-swagger-router-controller: Pki
-      x-codegen-request-body-name: body
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /dfsps/states-status:
     get:
       tags:
@@ -893,6 +871,11 @@ paths:
         Returns connectivity status including ping status and state status information for all DFSPs.
         Combines data from dfsps table (pingStatus, lastUpdatedPingStatusAt) with dfsp_states_status table.
       operationId: handleGetDfspsStatesStatus
+      # Rows are per DFSP, so the caller sees only the DFSPs in its scope
+      x-authz:
+        scopedBy: [dfsps]
+      security:
+      - session: []
       responses:
         200:
           description: Successful operation
@@ -912,16 +895,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-      security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: DfspNetworkConfig
   /dfsps/endpoints/unprocessed:
     get:
       tags:
       - DFSP-Endpoint-configuration
       summary: Returns the unprocessed endpoint items
       operationId: getUnprocessedEndpointItems
+      # Items belong to a DFSP, so the caller sees only the DFSPs in its scope
+      x-authz:
+        scopedBy: [dfsps]
 
       responses:
         200:
@@ -932,10 +914,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointAny'
-      x-swagger-router-controller: DfspNetworkConfig
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /dfsps/servercerts:
     get:
       tags:
@@ -943,6 +923,9 @@ paths:
       summary: get server certificates for all DFSPs
       description: TBD
       operationId: getAllDfspServerCerts
+      # Public TLS server certificates, presented in every handshake
+      x-authz:
+        scopedBy: []
 
       responses:
         200:
@@ -957,9 +940,7 @@ paths:
           description: server certs not set
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: DfspServerCerts
+      - session: []
   /dfsps/{dfspId}:
     put:
       tags:
@@ -989,10 +970,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/DFSPUpdate'
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: Pki
-      x-codegen-request-body-name: body
+      - session: []
   /dfsps/{dfspId}/ca:
     get:
       tags:
@@ -1017,10 +995,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: Pki
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-Certificate-Authority
@@ -1063,11 +1039,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: Pki
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/inbound:
     get:
       tags:
@@ -1096,10 +1069,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/InboundEnrollment'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspInbound
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-client-certificate
@@ -1133,11 +1104,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspInbound
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/inbound/{enId}:
     get:
       tags:
@@ -1165,10 +1133,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/InboundEnrollment'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspInbound
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/inbound/{enId}/sign:
     post:
       tags:
@@ -1205,9 +1171,8 @@ paths:
           description: don't have internal CA
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: DfspInbound
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound:
     get:
       tags:
@@ -1239,10 +1204,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspOutbound
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/csr:
     post:
       tags:
@@ -1276,10 +1239,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: DfspOutbound
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/onboard:
     post:
       tags:
@@ -1301,9 +1262,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: DfspOnboard
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/{enId}:
     get:
       tags:
@@ -1331,10 +1291,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/OutboundEnrollment'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspOutbound
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/{enId}/certificate:
     post:
       tags:
@@ -1375,11 +1333,8 @@ paths:
           description: validation error
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspOutbound
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/{enId}/validate:
     post:
       tags:
@@ -1408,9 +1363,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/OutboundEnrollment'
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: DfspOutbound
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints:
     get:
       tags:
@@ -1434,10 +1388,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/unprocessed:
     get:
       tags:
@@ -1461,10 +1413,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress:
     get:
       tags:
@@ -1486,10 +1436,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDFSPIngressRes'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1518,11 +1466,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateDFSPIngressRes'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/ips:
     get:
       tags:
@@ -1546,10 +1491,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointIp'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1578,11 +1521,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/ips/{epId}:
     get:
       tags:
@@ -1610,10 +1550,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -1647,11 +1585,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -1675,10 +1610,8 @@ paths:
           description: successful operation
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/urls:
     get:
       tags:
@@ -1702,10 +1635,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointURL'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1734,11 +1665,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointURL'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/urls/{epId}:
     get:
       tags:
@@ -1766,10 +1694,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -1803,11 +1729,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -1831,10 +1754,8 @@ paths:
           description: successful operation
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/egress:
     get:
       tags:
@@ -1856,10 +1777,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/GetDFSPEgressRes'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1888,11 +1807,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/CreateDFSPEgressRes'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/egress/ips:
     get:
       tags:
@@ -1916,10 +1832,8 @@ paths:
                 items:
                   $ref: '#/components/schemas/EndPointIp'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1948,11 +1862,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/egress/ips/{epId}:
     get:
       tags:
@@ -1980,10 +1891,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -2017,11 +1926,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -2045,10 +1951,8 @@ paths:
           description: successful operation
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/{epId}:
     get:
       tags:
@@ -2076,10 +1980,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -2113,11 +2015,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -2141,10 +2040,8 @@ paths:
           description: successful operation
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/endpoints/{epId}/confirmation:
     post:
       tags:
@@ -2172,9 +2069,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
       security:
-      - OAuth2:
-        - pta
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/servercerts:
     get:
       tags:
@@ -2200,10 +2096,8 @@ paths:
           description: server certs not set
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspServerCerts
+      - session: []
+      - machineToken: []
     put:
       tags:
       - DFSP-server-certificates-configuration
@@ -2232,11 +2126,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ServerCert'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspServerCerts
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     post:
       tags:
       - DFSP-server-certificates-configuration
@@ -2265,11 +2156,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/ServerCert'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspServerCerts
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     delete:
       tags:
       - DFSP-server-certificates-configuration
@@ -2288,10 +2176,8 @@ paths:
           description: no content
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: DfspServerCerts
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/jwscerts:
     get:
       tags:
@@ -2317,10 +2203,8 @@ paths:
           description: JWS certs not set
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: JWSCerts
+      - session: []
+      - machineToken: []
     post:
       tags:
       - JWS-certificates-configuration
@@ -2349,11 +2233,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/JWSCert'
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: JWSCerts
-      x-codegen-request-body-name: body
+      - session: []
+      - machineToken: []
     delete:
       tags:
       - JWS-certificates-configuration
@@ -2372,10 +2253,8 @@ paths:
           description: no content
           content: {}
       security:
-      - OAuth2:
-        - mta
-        - pta
-      x-swagger-router-controller: JWSCerts
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/status:
     get:
       summary: Retrieves dfsp status
@@ -2396,9 +2275,8 @@ paths:
               schema:
                 $ref: '#/components/schemas/DfspStatus'
       security:
-      - OAuth2:
-        - everyone
-      x-swagger-router-controller: DfspNetworkConfig
+      - session: []
+      - machineToken: []
   /dfsps/{dfspId}/states:
     post:
       tags:
@@ -2406,6 +2284,9 @@ paths:
       summary: Upload status of DFSP states
       description: Upload status of DFSP states
       operationId: uploadDfspStatesStatus
+      security:
+      - session: []
+      - machineToken: []
       parameters:
         - name: dfspId
           in: path
@@ -2426,7 +2307,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-      x-swagger-router-controller: DfspNetworkConfig
   /dfsps/{dfspId}/credentials:
     get:
       tags:
@@ -2467,9 +2347,7 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       security:
-      - OAuth2:
-        - dfsp
-      x-swagger-router-controller: CredentialsController
+      - session: []
     post:
       tags:
       - API-Credentials
@@ -2503,15 +2381,16 @@ paths:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
       security:
-      - OAuth2:
-        - dfsp
-      x-swagger-router-controller: CredentialsController
+      - session: []
   /monetaryzones:
     get:
       tags:
       - monetaryzones
       summary: Returns the monetary zones supported
       operationId: getMonetaryZones
+      # Reference data, the same list for every caller
+      x-authz:
+        scopedBy: []
       responses:
         200:
           description: successful operation
@@ -2521,16 +2400,17 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MonetaryZone'
-      x-swagger-router-controller: MonetaryZonesController
       security:
-      - OAuth2:
-        - pta
+      - session: []
   /monetaryzones/{monetaryZoneId}/dfsps:
     get:
       tags:
       - monetaryzones
       summary: Returns all the dfsps for that monetary zone
       operationId: getDfspsByMonetaryZones
+      # A monetary zone is reference data; the rows returned are DFSPs
+      x-authz:
+        scopedBy: [dfsps]
       parameters:
       - name: monetaryZoneId
         in: path
@@ -2547,10 +2427,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DFSPCreate'
-      x-swagger-router-controller: Pki
       security:
-      - OAuth2:
-        - pta
+      - session: []
 components:
   schemas:
     LoginResponse:
@@ -2619,8 +2497,8 @@ components:
         2faEnabled:
           type: boolean
       description: login response
-      example:
-        ok: true,
+      examples:
+      - ok: true,
         token:
           payload:
             at_hash: bJi28CeD9HLPf1ouOVkQTA
@@ -2630,11 +2508,9 @@ components:
             azp: CLIENT_KEY
             amr:
             - password
-            iss: https://WSO2_IM_SERVER:9443/oauth2/token
+            iss: https://hydra.example.com/
             groups:
-            - Application/MTA
-            - Application/DFSP:DFSP1
-            - Internal/everyone
+            - dfsp1
             exp: 1558713100
             iat: 1558709500
             dfspId: DFSP1
@@ -2695,8 +2571,8 @@ components:
                   type: string
                   description: DFSP id. To be used when calling the API
       description: login2step response
-      example:
-        ok: true,
+      examples:
+      - ok: true,
         token:
           payload:
             at_hash: bJi28CeD9HLPf1ouOVkQTA
@@ -2706,11 +2582,9 @@ components:
             azp: CLIENT_KEY
             amr:
             - password
-            iss: https://WSO2_IM_SERVER:9443/oauth2/token
+            iss: https://hydra.example.com/
             groups:
-            - Application/MTA
-            - Application/DFSP:DFSP1
-            - Internal/everyone
+            - dfsp1
             exp: 1558713100
             iat: 1558709500
             dfspId: DFSP1
@@ -2855,8 +2729,8 @@ components:
           type: string
         type:
           type: string
-      example:
-        code: 0
+      examples:
+      - code: 0
         message: message
         type: type
     DFSPCreate:
@@ -2879,17 +2753,14 @@ components:
         isProxy:
           type: boolean
           description: Proxy flag
-        securityGroup:
-          type: string
-          description: OAuth role/group owner
         email:
           type: string
           description: DFSP operator email address for sending invitation
       required:
         - dfspId
         - name
-      example:
-        dfspId: DFSP1
+      examples:
+      - dfspId: DFSP1
         name: DFSP 1
         monetaryZoneId: EUR
     DFSPUpdate:
@@ -2905,11 +2776,8 @@ components:
         isProxy:
           type: boolean
           description: Proxy flag
-        securityGroup:
-          type: string
-          description: DFSP Security group
-      example:
-        name: DFSP 1
+      examples:
+      - name: DFSP 1
         monetaryZoneId: EUR
     DFSP:
       type: object
@@ -2926,14 +2794,10 @@ components:
         isProxy:
           type: boolean
           description: Proxy flag
-        securityGroup:
-          type: string
-          description: DFSP Security group
-      example:
-        id: DFSP2
+      examples:
+      - id: DFSP2
         name: DFSP2
         monetaryZoneId: EUR
-        securityGroup: Application/DFSP:DFSP2
     DFSPInboundCreate:
       type: object
       properties:
@@ -2983,8 +2847,8 @@ components:
         id:
           type: integer
           description: Object ID
-      example:
-        id: 42
+      examples:
+      - id: 42
     OutboundEnrollment:
       type: object
       properties:
@@ -3086,8 +2950,8 @@ components:
           format: int64
       description: |
         Key generation parameters
-      example:
-        size: 4096
+      examples:
+      - size: 4096
         algo: rsa
     CAInitialInfo:
       required:
@@ -3157,24 +3021,26 @@ components:
       properties:
         description:
           type: string
-          example: Notification Callback Egress IP & Ports
+          examples:
+          - Notification Callback Egress IP & Ports
         address:
           pattern: ^(([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])\.){3}([0-9]|[1-9][0-9]|1[0-9]{2}|2[0-4][0-9]|25[0-5])(\/([0-9]|[1-2][0-9]|3[0-2]))?$
           type: string
           description: 'A single IP address or a set of address using CIDR notation  IP:
             a.b.c.d where 0 <= [a,b,c,d] <= 255 CIDR: a.b.c.d/e where 0 <= [a,b,c,d]
             <= 255, and 0 <= e <= 32'
-          example: 163.10.24.28/30
+          examples:
+          - 163.10.24.28/30
         ports:
           type: array
           description: List of ports or port ranges
-          example:
-          - "80"
-          - 8000-8080
+          examples:
+          - ["80", "8000-8080"]
           items:
             type: string
             description: Individual port or port range
-            example: 8000-8080
+            examples:
+            - 8000-8080
     BaseEndpoint:
       type: object
       additionalProperties: false
@@ -3281,16 +3147,14 @@ components:
             $ref: '#/components/schemas/IPEntry'
     CreateDFSPIngressReq:
       $ref: '#/components/schemas/DFSPIngress'
-      example:
-        {
-          "url": "http://test.local"
-        }
+      examples:
+      - url: http://test.local
     GetDFSPIngressRes:
       allOf:
       - $ref: '#/components/schemas/BaseEndpointv2'
       - $ref: '#/components/schemas/DFSPIngress'
-      example:
-        {
+      examples:
+      - {
           "id": 230,
           "dfspId": "test1",
           "state": "NOT_STARTED",
@@ -3303,8 +3167,8 @@ components:
       allOf:
       - $ref: '#/components/schemas/BaseEndpointv2'
       - $ref: '#/components/schemas/DFSPIngress'
-      example:
-        {
+      examples:
+      - {
           "id": 230,
           "dfspId": "test1",
           "state": "NOT_STARTED",
@@ -3315,8 +3179,8 @@ components:
         }
     CreateDFSPEgressReq:
       $ref: '#/components/schemas/DFSPEgress'
-      example:
-        {
+      examples:
+      - {
           "ipList": [
             {
               "description": "Notification Callback Egress IP & Ports",
@@ -3332,8 +3196,8 @@ components:
       allOf:
       - $ref: '#/components/schemas/BaseEndpointv2'
       - $ref: '#/components/schemas/DFSPEgress'
-      example:
-        {
+      examples:
+      - {
             "id": 228,
             "dfspId": "test1",
             "state": "NOT_STARTED",
@@ -3355,8 +3219,8 @@ components:
       allOf:
       - $ref: '#/components/schemas/BaseEndpointv2'
       - $ref: '#/components/schemas/DFSPEgress'
-      example:
-        {
+      examples:
+      - {
             "id": 228,
             "dfspId": "test1",
             "state": "NOT_STARTED",
@@ -3489,18 +3353,22 @@ components:
             type: string
         serialNumber:
           type: string
-          example: "17159976289428250189079625547205715159"
+          examples:
+          - "17159976289428250189079625547205715159"
         notBefore:
           type: string
           description: ISO date format
-          example: 2019-02-04T00:00:00Z
+          examples:
+          - 2019-02-04T00:00:00Z
         notAfter:
           type: string
           description: ISO date format
-          example: 2020-02-12T12:00:00Z
+          examples:
+          - 2020-02-12T12:00:00Z
         signatureAlgorithm:
           type: string
-          example: SHA256WithRSA
+          examples:
+          - SHA256WithRSA
       description: Certificate contents and info
     CSRInfo:
       type: object
@@ -3543,17 +3411,20 @@ components:
                   type: array
                   items:
                     type: string
-                    example: 163.10.5.24
+                    examples:
+                    - 163.10.5.24
                 emailAddresses:
                   type: array
                   items:
                     type: string
-                    example: pki@modusbox.live
+                    examples:
+                    - pki@mojaloop.live
                 uris:
                   type: array
                   items:
                     type: string
-                    example: https://modusbox.live
+                    examples:
+                    - https://mojaloop.live
       description: CSR contents and info
     Statuses:
       type: string
@@ -3662,8 +3533,8 @@ components:
           type: string
         name:
           type: string
-      example:
-        monetaryZoneId: EUR
+      examples:
+      - monetaryZoneId: EUR
         name: Euro
     DfspStatesStatusPayload:
       type: object
@@ -3795,56 +3666,38 @@ components:
         clientId:
           type: string
           description: OAuth client ID for API integration
-          example: api-dfsp1
+          examples:
+          - api-dfsp1
         clientSecret:
           type: string
           description: OAuth client secret
-          example: xxxxx-xxxxx-xxxxx-xxxxx
+          examples:
+          - xxxxx-xxxxx-xxxxx-xxxxx
         createdAt:
           type: string
           format: date-time
           description: Timestamp when credentials were created
-          example: 2025-01-20T10:30:00.000Z
+          examples:
+          - 2025-01-20T10:30:00.000Z
         updatedAt:
           type: string
           format: date-time
           description: Timestamp when credentials were last updated
-          example: 2025-01-20T15:45:00.000Z
+          examples:
+          - 2025-01-20T15:45:00.000Z
       required:
         - clientId
         - clientSecret
         - createdAt
       description: API client credentials for OAuth integration
   securitySchemes:
-    OAuth2:
-      type: oauth2
-      flows:
-        password:
-          tokenUrl: https://WSO2_IM_SERVERl:9443/oauth2/token
-          scopes:
-            pta: Portal Technical Administrator
-            mta: Mojabox Technical Administrator
-            everyone: All logged in users
-x-components:
-  requestBodies:
-    CA:
-      description: CA initial info
-      in: body
-      name: body
-      required: true
-      schema:
-        $ref: '#/components/schemas/CAInitialInfo'
-    DFSP:
-      description: DFSP initial info
-      in: body
-      name: body
-      required: true
-      schema:
-        $ref: '#/components/schemas/DFSPCreate'
-    DFSPInbound:
-      description: DFSP inbound initial info
-      in: body
-      name: body
-      required: true
-      schema:
-        $ref: '#/components/schemas/DFSPInboundCreate'
+    # A human's browser session, issued by Ory Kratos.
+    session:
+      type: apiKey
+      in: cookie
+      name: ory_kratos_session
+    # A machine client's access token, issued by Ory Hydra.
+    machineToken:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT

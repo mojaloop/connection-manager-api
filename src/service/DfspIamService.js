@@ -29,32 +29,26 @@
 const Constants = require('../constants/Constants');
 const HydraService = require('./HydraService');
 const KratosService = require('./KratosService');
-const KetoClient = require('../utils/KetoClient');
+const IamProvisioning = require('./IamProvisioningClient');
 const formatValidator = require('../utils/formatValidator');
 const { logger } = require('../log/logger');
 
 const log = logger.child({ component: 'DfspIamService' });
 
-let ketoClientCache = null;
-const getKetoClient = () => {
-  if (!ketoClientCache) {
-    ketoClientCache = new KetoClient(Constants.KETO.WRITE_URL, Constants.KETO.READ_URL, Constants.KETO.HUB_OBJECT);
-  }
-  return ketoClientCache;
-};
-
 /**
- * IAM provisioning facade. This is the only module that knows DFSP onboarding
- * spans Hydra (machine OAuth2 client), Kratos (admin identity) and Keto
- * (permission tuples). Runtime authorization is enforced entirely by the
- * Oathkeeper gateway against the OPL model in permissions/mcm.keto.ts; the
- * rest of the application never consults IAM.
+ * DFSP onboarding. This service creates what a new DFSP needs to be operated:
+ * a machine OAuth2 client in Hydra, an admin identity in Kratos, and the
+ * invitation that lets that admin set a password.
  *
- * Tuples written per DFSP:
- *   Dfsp:<id>#parent@Hub:<hub>             (hub admins inherit access)
- *   Dfsp:<id>#members@<kratos identity id> (human admin)
- *   Dfsp:<id>#members@<hydra client_id>    (PM4ML machine client; client_id = dfspId)
+ * It then records the DFSP with the IAM and assigns each principal the role
+ * the deployment configured, passing the names through opaquely. A hub
+ * operator can reshape the result afterwards like any other role.
  */
+
+const assignConfigured = async (subjectId, role, dfspId) => {
+  if (!role) return;
+  await IamProvisioning.assignDfspRole(subjectId, role, dfspId);
+};
 
 /**
  * Provisions all IAM resources for a new DFSP. Rolls everything back on
@@ -69,25 +63,24 @@ exports.provisionDfsp = async (dfspId, email) => {
   formatValidator.validateDfspId(dfspId);
   formatValidator.validateEmail(email);
 
-  const keto = getKetoClient();
   let clientCreated = false;
   let identityId = null;
 
   try {
-    await HydraService.createPM4MLClient(dfspId);
+    const { clientId } = await HydraService.createPM4MLClient(dfspId);
     clientCreated = true;
 
     ({ identityId } = await KratosService.createIdentity(email, dfspId));
 
-    await keto.createDfsp(dfspId);
-    await keto.addDfspMember(identityId, dfspId);
-    await keto.addDfspMember(dfspId, dfspId);
+    await IamProvisioning.provisionDfsp(dfspId);
+    await assignConfigured(identityId, Constants.IAM.DFSP_ADMIN_ROLE, dfspId);
+    await assignConfigured(clientId ?? dfspId, Constants.IAM.DFSP_CLIENT_ROLE, dfspId);
 
     await KratosService.sendInvitationEmail(email);
-    log.info(`Provisioned IAM for DFSP ${dfspId}`, { identityId });
+    log.info(`Provisioned DFSP ${dfspId}`, { identityId });
   } catch (err) {
-    log.error(`IAM provisioning failed for DFSP ${dfspId}, rolling back`, { message: err.message });
-    await keto.deleteDfsp(dfspId).catch((e) => log.warn('Keto rollback failed', { e: e.message }));
+    log.error(`Provisioning failed for DFSP ${dfspId}, rolling back`, { message: err.message });
+    await IamProvisioning.deprovisionDfsp(dfspId).catch((e) => log.warn('IAM rollback failed', { e: e.message }));
     if (identityId) {
       await KratosService.deleteIdentity(identityId).catch((e) => log.warn('Kratos rollback failed', { e: e.message }));
     }
@@ -99,35 +92,28 @@ exports.provisionDfsp = async (dfspId, email) => {
 };
 
 /**
- * Tears down all IAM resources of a DFSP: the human members' Kratos
- * identities (retained while they belong to another DFSP), the Hydra machine
- * client, and every Keto tuple of the DFSP. No-op when IAM is disabled.
+ * Tears a DFSP down: its roles, its machine client, and the identities that
+ * operated it. An identity is kept when it still holds a role somewhere,
+ * which is how a system integrator survives losing one of its DFSPs. No-op
+ * when IAM is disabled.
  *
  * @param {string} dfspId
  */
 exports.deprovisionDfsp = async (dfspId) => {
   if (!Constants.IAM.ENABLED) return;
 
-  const keto = getKetoClient();
-  const memberIds = await keto.listDfspMembers(dfspId);
-  for (const subjectId of memberIds) {
-    if (subjectId === dfspId) continue;
-    const hasOthers = await keto.hasOtherDfspMemberships(subjectId, dfspId);
-    if (!hasOthers) {
-      await KratosService.deleteIdentity(subjectId);
-    } else {
-      log.info(`Identity ${subjectId} retained, still a member of other DFSPs`);
-    }
+  const { orphaned } = await IamProvisioning.deprovisionDfsp(dfspId);
+  for (const subjectId of orphaned) {
+    await KratosService.deleteIdentity(subjectId).catch((e) =>
+      log.warn(`Could not delete identity ${subjectId}`, { e: e.message }));
   }
-
   await HydraService.deleteClient(dfspId);
-  await keto.deleteDfsp(dfspId);
-  log.info(`Deprovisioned IAM for DFSP ${dfspId}`);
+  log.info(`Deprovisioned DFSP ${dfspId}`, { identitiesRemoved: orphaned.length });
 };
 
 /**
  * Returns fresh PM4ML credentials for the DFSP: rotates the machine client's
- * secret, creating the client if it doesn't exist yet.
+ * secret, creating the client when absent.
  *
  * @param {string} dfspId
  * @returns {Promise<{clientId: string, clientSecret: string}>}

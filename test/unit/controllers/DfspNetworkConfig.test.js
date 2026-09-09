@@ -26,6 +26,7 @@
  ******/
 
 
+const { EVERYTHING } = require('@mojaloop/authz');
 const DfspNetworkConfigController = require('#src/controllers/DfspNetworkConfig');
 const utils = require('../../../src/utils/writer.js');
 const DfspNetworkConfigService = require('../../../src/service/DfspNetworkConfigService');
@@ -46,7 +47,8 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       context: {
         pkiEngine: {},
         certManager: {}
-      }
+      },
+      authz: () => EVERYTHING
     };
     mockRes = {};
     mockNext = jest.fn();
@@ -79,7 +81,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       DfspNetworkConfigController.handleGetDfspsStatesStatus(mockReq, mockRes, mockNext);
 
       await new Promise(setImmediate);
-      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context);
+      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, EVERYTHING);
       expect(utils.writeJson).toHaveBeenCalledWith(mockRes, mockResponse);
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -91,7 +93,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       DfspNetworkConfigController.handleGetDfspsStatesStatus(mockReq, mockRes, mockNext);
 
       await new Promise(setImmediate);
-      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context);
+      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, EVERYTHING);
       expect(utils.writeJson).toHaveBeenCalledWith(mockRes, mockError, mockError.status);
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -103,7 +105,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       DfspNetworkConfigController.handleGetDfspsStatesStatus(mockReq, mockRes, mockNext);
 
       await new Promise(setImmediate);
-      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context);
+      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, EVERYTHING);
     });
   });
 });

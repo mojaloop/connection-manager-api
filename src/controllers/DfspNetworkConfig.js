@@ -88,7 +88,7 @@ exports.createDFSPIngressUrl = (req, res, next) => {
 };
 
 exports.getUnprocessedEndpointItems = (req, res, next) => {
-  DfspNetworkConfig.getUnprocessedEndpointItems(req.context)
+  DfspNetworkConfig.getUnprocessedEndpointItems(req.context, req.authz(req, 'dfsps'))
     .then(response => {
       utils.writeJson(res, response);
     })
@@ -329,7 +329,7 @@ exports.uploadDfspStatesStatus = (req, res) => {
 };
 
 exports.handleGetDfspsStatesStatus = (req, res, next) => {
-  DfspNetworkConfig.getAllDfspsStatesStatus(req.context)
+  DfspNetworkConfig.getAllDfspsStatesStatus(req.context, req.authz(req, 'dfsps'))
     .then(response => {
       utils.writeJson(res, response);
     })

@@ -24,12 +24,6 @@
         "name": {
           "type": "string",
           "title": "Name"
-        },
-        "roles": {
-          "type": "array",
-          "items": {
-            "type": "string"
-          }
         }
       },
       "required": ["email"],

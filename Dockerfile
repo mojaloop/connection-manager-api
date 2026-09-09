@@ -1,5 +1,5 @@
 # Arguments
-ARG NODE_VERSION=lts-alpine
+ARG NODE_VERSION=24.19.0-alpine3.24
 
 # NOTE: Ensure you set NODE_VERSION Build Argument as follows...
 #
@@ -52,7 +52,6 @@ USER app-user
 
 COPY --chown=app-user --from=builder /opt/app .
 COPY src /opt/app/src
-COPY permissions /opt/app/permissions
 
 EXPOSE 3001
 

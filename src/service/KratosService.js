@@ -62,9 +62,9 @@ const handleApiError = (error, operation, ctx = {}) => {
 
 /**
  * Creates a Kratos identity for a DFSP admin (hub admin when dfspId is
- * omitted). Roles go in traits, which the portal reads via whoami; dfspId
- * goes in metadata_public. Email starts unverified; the password is set
- * through the invitation link.
+ * omitted). The identity carries who someone is, never what they may do:
+ * role membership is an edge in the permission graph, written by the IAM.
+ * Email starts unverified; the password is set through the invitation link.
  *
  * @param {string} email
  * @param {string} dfspId  (optional, undefined for hub admins)
@@ -74,7 +74,7 @@ exports.createIdentity = async (email, dfspId) => {
   const api = getIdentityApi();
   const createIdentityBody = {
     schema_id: Constants.KRATOS.IDENTITY_SCHEMA_ID,
-    traits: { email, roles: dfspId ? [`${Constants.IAM.DFSP_ROLE_PREFIX}${dfspId}`] : [] },
+    traits: { email },
     verifiable_addresses: [{ value: email, via: 'email', verified: false, status: 'pending' }],
   };
   if (dfspId) createIdentityBody.metadata_public = { dfspId };
@@ -133,7 +133,7 @@ exports.sendInvitationEmail = async (email) => {
 };
 
 /**
- * Deletes a Kratos identity. Returns silently if the identity doesn't exist.
+ * Deletes a Kratos identity. Silent when the identity is absent.
  *
  * @param {string} identityId
  */

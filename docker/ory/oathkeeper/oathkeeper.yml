@@ -9,7 +9,7 @@ serve:
 access_rules:
   matching_strategy: regexp
   repositories:
-    - file:///etc/config/oathkeeper/access-rules.yml
+    - file:///etc/config/authz/oathkeeper-rules.yml
 
 errors:
   fallback:
@@ -64,17 +64,11 @@ authorizers:
   remote_json:
     enabled: true
     config:
-      remote: http://keto:4466/relation-tuples/check
+      remote: http://decision:3002/
       payload: "{}"
+      forward_response_headers_to_upstream:
+        - X-Scope
 
 mutators:
-  header:
-    enabled: true
-    config:
-      headers:
-        X-User: "{{ print .Subject }}"
-        X-Email: "{{ with .Extra.identity }}{{ print .traits.email }}{{ end }}"
-        X-DFSP-ID: "{{ with .Extra.identity }}{{ with .metadata_public }}{{ with .dfspId }}{{ . }}{{ end }}{{ end }}{{ end }}"
-        X-Roles: '[{{ if .Extra.identity }}{{ with .Extra.identity.metadata_public }}{{ with .role }}"{{ . }}"{{ end }}{{ with .dfspId }}"dfsp:{{ . }}"{{ end }}{{ end }}{{ else }}"dfsp:{{ print .Subject }}"{{ end }}]'
   noop:
     enabled: true

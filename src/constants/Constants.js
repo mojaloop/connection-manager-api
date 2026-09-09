@@ -86,8 +86,14 @@ module.exports = {
   IAM: {
     ENABLED: env.get('IAM_ENABLED').default('false').asBool(),
     AUTO_CREATE_ACCOUNTS: env.get('IAM_AUTO_CREATE_ACCOUNTS').default('true').asBool(),
-    HUB_ADMIN_ROLE: env.get('IAM_HUB_ADMIN_ROLE').default('hub-admin').asString(),
-    DFSP_ROLE_PREFIX: env.get('IAM_DFSP_ROLE_PREFIX').default('dfsp:').asString(),
+    PROVISIONING_URL: env.get('IAM_PROVISIONING_URL').default('http://iam-provisioning.ory.svc.cluster.local').asString(),
+    // Deployment configuration for DFSP onboarding, passed through opaquely:
+    // the resource name the deployment files DFSPs under, and the role each
+    // principal is assigned over the DFSP. The IAM decides what each grants.
+    // An empty role assigns nothing.
+    DFSP_RESOURCE_NAME: env.get('IAM_DFSP_RESOURCE_NAME').default('').asString(),
+    DFSP_ADMIN_ROLE: env.get('IAM_DFSP_ADMIN_ROLE').default('').asString(),
+    DFSP_CLIENT_ROLE: env.get('IAM_DFSP_CLIENT_ROLE').default('').asString(),
   },
 
   HYDRA: {
@@ -102,12 +108,6 @@ module.exports = {
     IDENTITY_SCHEMA_ID: env.get('KRATOS_IDENTITY_SCHEMA_ID').default('default').asString(),
     INVITE_RETURN_TO_URL: env.get('KRATOS_INVITE_RETURN_TO_URL').default('http://mcm.localhost/').asString(),
     INVITE_TOKEN_TTL: env.get('KRATOS_INVITE_TOKEN_TTL').default('168h').asString(),
-  },
-
-  KETO: {
-    READ_URL: env.get('KETO_READ_URL').default('http://keto-read.mcm.localhost').asString(),
-    WRITE_URL: env.get('KETO_WRITE_URL').default('http://keto-write.mcm.localhost').asString(),
-    HUB_OBJECT: env.get('KETO_HUB_OBJECT').default('mojaloop').asString(),
   },
 
   EXTRA_TLS: {

@@ -93,25 +93,52 @@ describe('DFSP Credentials Tests', () => {
 
   describe('Using DFSP Credentials', () => {
 
-    test('should authenticate with DFSP credentials and access DFSP-specific endpoints', async () => {
-      const dfspApiHelper = new ApiHelper({
-        oauth: {
-          clientId: dfspClientId,
-          clientSecret: dfspClientSecret,
-          tokenUrl: `${Config.hydraPublicUrl}/oauth2/token`
-        }
-      });
+    const machineApiHelper = () => new ApiHelper({
+      oauth: {
+        clientId: dfspClientId,
+        clientSecret: dfspClientSecret,
+        tokenUrl: `${Config.hydraPublicUrl}/oauth2/token`
+      }
+    });
 
-      const dfspListResponse = await dfspApiHelper.sendRequest({
+    test('should access own DFSP resources on the external surface', async () => {
+      const statusResponse = await machineApiHelper().sendRequest({
         method: MethodEnum.GET,
-        url:`${Config.mcmEndpoint}/dfsps`,
+        url:`${Config.mcmExternalEndpoint}/dfsps/${dfspId}/status`,
         headers: {
           'Content-Type': 'application/json'
         }
       });
 
-      expect(dfspListResponse.status).toBe(200);
-      expect(Array.isArray(dfspListResponse.data)).toBe(true);
+      expect(statusResponse.status).toBe(200);
+    });
+
+    test('should not reach the DFSP list on the external surface', async () => {
+      // The route only exists on the internal (portal) surface; Oathkeeper
+      // returns 404 for URLs no rule matches.
+      const dfspListResponse = await machineApiHelper().sendRequest({
+        method: MethodEnum.GET,
+        url:`${Config.mcmExternalEndpoint}/dfsps`,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      expect(dfspListResponse.status).toBe(404);
+    });
+
+    test('should be rejected on the internal surface', async () => {
+      // Internal rules authenticate with the Kratos session cookie only; a
+      // machine JWT satisfies no authenticator there.
+      const internalResponse = await machineApiHelper().sendRequest({
+        method: MethodEnum.GET,
+        url:`${Config.mcmEndpoint}/dfsps/${dfspId}/status`,
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      expect(internalResponse.status).toBe(401);
     });
   });
 });

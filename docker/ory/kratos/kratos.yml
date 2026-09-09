@@ -101,8 +101,8 @@ identity:
 courier:
   smtp:
     connection_uri: smtp://mailpit:1025/?disable_starttls=true
-    from_address: noreply@mojaloop.local
-    from_name: Mojaloop MCM
+    from_address: noreply@${COMPOSE_DOMAIN}
+    from_name: Mojaloop Hub
   templates:
     recovery:
       valid:

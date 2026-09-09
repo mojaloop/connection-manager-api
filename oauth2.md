@@ -6,7 +6,7 @@ We're using OAuth2 to authenticate and authorize the access to the API.
 
 ## Definitions
 
-The API uses OpenAPI2/swagger to specify the security options. See [the swagger doc](./src/api/swagger.yaml).
+The API uses OpenAPI to specify the security options. See [the API document](./src/api/openapi.yaml).
 
 This is the current definition ( at v1.3.3 ):
 

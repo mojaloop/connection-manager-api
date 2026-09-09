@@ -49,13 +49,11 @@ describe('DFSPEndpointModel', function () {
           dfsp_id: 'dfsp.inbound.test.1',
           name: 'dfsp.inbound.test.1',
           monetaryZoneId: 'EUR',
-          security_group: null,
         },
         {
           dfsp_id: 'dfsp.inbound.test.2',
           name: 'dfsp.inbound.test.2',
           monetaryZoneId: 'EUR',
-          security_group: null,
         }
       ];
 

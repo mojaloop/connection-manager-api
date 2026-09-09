@@ -46,5 +46,10 @@ process.env.KRATOS_IDENTITY_SCHEMA_ID = 'default';
 process.env.KETO_READ_URL = 'http://keto-read.mcm.localhost';
 process.env.KETO_WRITE_URL = 'http://keto-write.mcm.localhost';
 
+process.env.IAM_PROVISIONING_URL = 'http://iam.mcm.localhost';
+process.env.IAM_DFSP_RESOURCE_NAME = 'Participant';
+process.env.IAM_DFSP_ADMIN_ROLE = 'dfsp-operator';
+process.env.IAM_DFSP_CLIENT_ROLE = 'dfsp-client';
+
 // Features
 process.env.DFSP_WATCHER_ENABLED = 'false';

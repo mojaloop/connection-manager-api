@@ -19,12 +19,16 @@
 const { enableCustomRootCAs } = require('./utils/tlsUtils');
 const cors = require('cors');
 const path = require('path');
-// const app = require('connect')();
-const oas3Tools = require('oas3-tools');
+const express = require('express');
+const fs = require('fs');
+const bodyParser = require('body-parser');
+const OpenApiValidator = require('express-openapi-validator');
+const { createGuard } = require('@mojaloop/authz');
 const { createWinstonLogger, logger } = require('./log/logger');
 const AuthMiddleware = require('./middleware/AuthMiddleware');
 const DfspIdValidationMiddleware = require('./middleware/DfspIdValidationMiddleware');
 const HubCAService = require('./service/HubCAService');
+const ServerCertsService = require('./service/ServerCertsService');
 
 const db = require('./db/database');
 const corsUtils = require('./utils/corsUtils');
@@ -34,29 +38,41 @@ const PKIEngine = require('./pki_engine/VaultPKIEngine');
 const NotFoundError = require('./errors/NotFoundError');
 const CertManager = require('./pki_engine/CertManager');
 
+/**
+ * Handlers are found by the operationId they are exported under, which the
+ * document already declares and keeps unique. Building the index once turns a
+ * name exported twice into a startup failure.
+ */
+const indexHandlers = (handlersPath) => {
+  const handlers = new Map();
+  for (const file of fs.readdirSync(handlersPath).filter((f) => f.endsWith('.js'))) {
+    const module = require(path.join(handlersPath, file));
+    for (const [operationId, handler] of Object.entries(module)) {
+      if (typeof handler !== 'function') continue;
+      const owner = handlers.get(operationId);
+      if (owner) throw new Error(`${operationId} is exported by both ${owner.file} and ${file}`);
+      handlers.set(operationId, { handler, file });
+    }
+  }
+  return handlers;
+};
+
+const resolveHandler = (handlers) => (handlersPath, route, apiDoc) => {
+  const pathKey = route.openApiRoute.substring(route.basePath.length);
+  const { operationId } = apiDoc.paths[pathKey][route.method.toLowerCase()];
+  const found = handlers.get(operationId);
+  if (!found) {
+    throw new Error(`no controller exports ${operationId} for ${route.method} ${route.expressRoute}`);
+  }
+  return found.handler;
+};
+
 exports.connect = async () => {
   await db.connect();
   await executeSSLCustomLogic();
-  // await pkiService.init(Constants.vault);
 
-  // swaggerRouter configuration
-  const options = {
-    routing: {
-      controllers: path.join(__dirname, './controllers')
-    },
-    logging: {
-      format: 'combined',
-      errorLimit: 400
-    },
-    openApiValidator: {
-      validateSecurity: false,
-    }
-  };
-
-  // Initialize the Swagger middleware
-  const expressAppConfig = oas3Tools.expressAppConfig(path.join(__dirname, 'api/swagger.yaml'), options);
-
-  const app = expressAppConfig.getApp();
+  const app = express();
+  const controllersPath = path.join(__dirname, './controllers');
 
   const pkiEngine = new PKIEngine(Constants.vault);
   await pkiEngine.connect();
@@ -100,32 +116,59 @@ exports.connect = async () => {
     await HubCAService.createInternalHubCA(ctx, Constants.caCsrParameters);
   }
 
-  const middlewares = [
-    (req, res, next) => {
-      req.context = {
-        pkiEngine,
-        certManager,
-        hubJwsCertManager,
-        db: db.knex,
-      };
-      next();
-    },
-    cors(corsUtils.getCorsOptions),
-    createWinstonLogger()
-  ];
-
-  // Add DFSP ID validation middleware if enabled
-  if (Constants.dfspIdHeaderValidationEnabled) {
-    middlewares.push(DfspIdValidationMiddleware.createDfspIdValidationMiddleware());
+  let hubServerCert;
+  try {
+    hubServerCert = await ServerCertsService.getHubServerCerts(ctx);
+  } catch (e) {
+    if (!(e instanceof NotFoundError)) {
+      throw e;
+    }
+  }
+  if (!hubServerCert?.serverCertificate) {
+    await ServerCertsService.createHubServerCerts(ctx);
   }
 
-  middlewares.push(AuthMiddleware.createHeaderTrustMiddleware());
+  // Body parsers come before anything that reads a body, which the validator
+  // does. The limits are body-parser's defaults.
+  app.use(bodyParser.json());
+  app.use(bodyParser.urlencoded({ extended: true }));
+  app.use(bodyParser.text());
 
-  app.use(...middlewares);
-  const stack = app._router.stack;
-  const lastEntries = stack.splice(app._router.stack.length - middlewares.length);
-  const firstEntries = stack.splice(0, 5);
-  app._router.stack = [...firstEntries, ...lastEntries, ...stack];
+  app.use((req, res, next) => {
+    req.context = { pkiEngine, certManager, hubJwsCertManager, db: db.knex };
+    next();
+  });
+  app.use(cors(corsUtils.getCorsOptions));
+  app.use(createWinstonLogger());
+
+  if (Constants.dfspIdHeaderValidationEnabled) {
+    app.use(DfspIdValidationMiddleware.createDfspIdValidationMiddleware());
+  }
+
+  // Every handler asks req.authz what its caller may reach, so it is on the
+  // request before the routes are
+  const authz = await createGuard(path.join(__dirname, 'api/openapi.yaml'));
+  app.use(AuthMiddleware.createHeaderTrustMiddleware(authz));
+
+  app.use(
+    OpenApiValidator.middleware({
+      apiSpec: path.join(__dirname, 'api/openapi.yaml'),
+      validateRequests: true,
+      validateResponses: false,
+      // The gateway authenticated and authorized the request before it
+      // reached this process; the document's security schemes are what the
+      // generator derives those gateway rules from.
+      validateSecurity: false,
+      operationHandlers: {
+        basePath: controllersPath,
+        resolver: resolveHandler(indexHandlers(controllersPath)),
+      },
+    })
+  );
+
+  app.use((err, req, res, next) => {
+    res.status(err.status || 500).json({ message: err.message, errors: err.errors });
+  });
 
   return app;
 };

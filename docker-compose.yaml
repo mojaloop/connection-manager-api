@@ -8,14 +8,19 @@ x-api-env: &api-env
   - KRATOS_ADMIN_URL=http://kratos-admin.${COMPOSE_DOMAIN:-mcm.localhost}
   - KRATOS_IDENTITY_SCHEMA_ID=default
   - KRATOS_INVITE_RETURN_TO_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}/
-  - KETO_READ_URL=http://keto-read.${COMPOSE_DOMAIN:-mcm.localhost}
-  - KETO_WRITE_URL=http://keto-write.${COMPOSE_DOMAIN:-mcm.localhost}
+  - IAM_PROVISIONING_URL=http://iam-provisioning:3003
+  - IAM_DFSP_RESOURCE_NAME=Participant
+  - IAM_DFSP_ADMIN_ROLE=dfsp-operator
+  - IAM_DFSP_CLIENT_ROLE=dfsp-client
   - CLIENT_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
 
 x-api-labels: &api-labels
+  # Oathkeeper gates /api on the API host, cookie for humans and JWT for machines
   - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
+  # The scope is written by the decision endpoint and by nothing else, so a
+  # client's own copy is dropped before anything downstream can read it
+  - "traefik.http.routers.mcm-api.middlewares=drop-scope,oathkeeper-auth"
   - "traefik.http.services.mcm-api.loadbalancer.server.port=3001"
-  - "traefik.http.routers.mcm-api.middlewares=oathkeeper-auth"
 
 x-api-healthcheck: &api-healthcheck
   test: wget --spider --quiet http://localhost:3001/api/health
@@ -131,7 +136,9 @@ services:
     labels:
       - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
       - "traefik.http.services.mcm-api.loadbalancer.server.port=${PORT:-3001}"
-      - "traefik.http.routers.mcm-api.middlewares=oathkeeper-auth"
+      # The scope is written by the decision endpoint and by nothing else, so a
+      # client's own copy is dropped before anything downstream can read it
+      - "traefik.http.routers.mcm-api.middlewares=drop-scope,oathkeeper-auth"
 
   connection-manager-api:
     image: mojaloop/connection-manager-api:local
@@ -158,10 +165,8 @@ services:
         condition: service_healthy
       kratos:
         condition: service_healthy
-      keto:
+      iam-provisioning:
         condition: service_healthy
-      iam-bootstrap:
-        condition: service_completed_successfully
       connection-manager-migration:
         condition: service_completed_successfully
     healthcheck: *api-healthcheck
@@ -191,10 +196,8 @@ services:
         condition: service_healthy
       kratos:
         condition: service_healthy
-      keto:
+      iam-provisioning:
         condition: service_healthy
-      iam-bootstrap:
-        condition: service_completed_successfully
       connection-manager-migration-full:
         condition: service_completed_successfully
     healthcheck: *api-healthcheck
@@ -289,19 +292,39 @@ services:
   # Hydra mounts a named volume at /var/lib/sqlite but runs as a non-root user
   # and the image doesn't pre-create the dir, so busybox makes it writable.
   # Renders the Ory config templates, substituting ${COMPOSE_DOMAIN}, into the
-  # ory-config volume that the Ory services mount.
+  # ory-config volume that the Ory services mount
   prepare-ory-config:
     image: alpine
     environment:
       - COMPOSE_DOMAIN=${COMPOSE_DOMAIN:-mcm.localhost}
-      - MCM_FQDN=${COMPOSE_DOMAIN:-mcm.localhost}
-      - KETO_READ_URL=http://keto:4466
-      - KETO_HUB_OBJECT=${KETO_HUB_OBJECT:-mojaloop}
     volumes:
       - ./docker/ory:/templates:ro
-      - ./permissions:/permissions:ro
       - ory-config:/rendered
     entrypoint: ["/bin/sh", "/templates/render-config.sh"]
+    restart: "no"
+
+  # Generates the access rules and the permission model from the API document.
+  # Build the image once with:
+  #   docker build -t mojaloop/ml-iam-services:local ../ml-iam-services
+  prepare-authz:
+    image: mojaloop/ml-iam-services:${ML_IAM_SERVICES_TAG:-local}
+    user: root
+    command:
+      - authzgen
+      - --spec=/spec/openapi.yaml
+      - --out=/rendered/authz
+      # The API shares the UI's host under /api, which the spec's server entry
+      # already supplies, so the mount path is empty
+      - --host=${COMPOSE_DOMAIN:-mcm.localhost}
+      - --path=
+      - --resource-names=/resource-names.json
+    volumes:
+      - ./src/api:/spec:ro
+      - ./docker/ory/resource-names.json:/resource-names.json:ro
+      - ory-config:/rendered
+    depends_on:
+      prepare-ory-config:
+        condition: service_completed_successfully
     restart: "no"
 
   hydra-sqlite-init:
@@ -429,12 +452,11 @@ services:
     volumes:
       - keto-sqlite:/var/lib/sqlite
       - ory-config:/etc/config:ro
-      - ./permissions/mcm.keto.ts:/etc/keto-namespaces/mcm.keto.ts:ro
     command: migrate up -y --config /etc/config/keto/keto.yml
     depends_on:
       keto-sqlite-init:
         condition: service_completed_successfully
-      prepare-ory-config:
+      prepare-authz:
         condition: service_completed_successfully
     restart: "no"
 
@@ -446,7 +468,6 @@ services:
     volumes:
       - keto-sqlite:/var/lib/sqlite
       - ory-config:/etc/config:ro
-      - ./permissions/mcm.keto.ts:/etc/keto-namespaces/mcm.keto.ts:ro
     labels:
       - "traefik.http.routers.keto-read.rule=Host(`keto-read.${COMPOSE_DOMAIN:-mcm.localhost}`)"
       - "traefik.http.routers.keto-read.service=keto-read"
@@ -465,9 +486,63 @@ services:
       start_period: 5s
     restart: unless-stopped
 
+  # The single point that answers every rendered payload: it composes Keto
+  # checks into one verdict and computes the caller's visible rows. It holds
+  # read-only Keto access and has no route of its own.
+  decision:
+    image: mojaloop/ml-iam-services:${ML_IAM_SERVICES_TAG:-local}
+    command: ["decide"]
+    environment:
+      - PORT=3002
+      - KETO_READ_URL=http://keto:4466
+    depends_on:
+      keto:
+        condition: service_healthy
+    restart: unless-stopped
+
+  # The write side of the IAM. A service that creates a resource names it and
+  # its principals here; which roles that implies, and every tuple behind
+  # them, is decided from the deployment's role documents. Nothing else in the
+  # platform holds Keto write access.
+  iam-provisioning:
+    image: mojaloop/ml-iam-services:${ML_IAM_SERVICES_TAG:-local}
+    command:
+      - provisioning
+      - --roles=/default-roles.json
+      - --catalog=/config/authz/catalog.json
+      - --resource-names=/resource-names.json
+    environment:
+      - PORT=3003
+      - KETO_WRITE_URL=http://keto:4467
+      - KETO_READ_URL=http://keto:4466
+      - KRATOS_ADMIN_URL=http://kratos:4434
+      - IAM_ADMIN_EMAIL=${IAM_ADMIN_EMAIL:-admin@mcm.local}
+      - IAM_ADMIN_PASSWORD=${IAM_ADMIN_PASSWORD:-admin1234}
+      - IAM_HUB_ADMIN_ROLE=${IAM_HUB_ADMIN_ROLE:-hub-admin}
+    volumes:
+      - ./docker/ory/default-roles.json:/default-roles.json:ro
+      - ./docker/ory/resource-names.json:/resource-names.json:ro
+      - ory-config:/config:ro
+    labels:
+      - "traefik.http.routers.iam.rule=Host(`iam.${COMPOSE_DOMAIN:-mcm.localhost}`)"
+      - "traefik.http.routers.iam.service=iam"
+      - "traefik.http.services.iam.loadbalancer.server.port=3003"
+    depends_on:
+      keto:
+        condition: service_healthy
+      prepare-authz:
+        condition: service_completed_successfully
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3003/health"]
+      interval: 5s
+      timeout: 3s
+      retries: 30
+      start_period: 5s
+    restart: unless-stopped
+
   # Zero-trust gateway: Traefik consults Oathkeeper (forward-auth) for every
   # /api request. Oathkeeper validates the Kratos session or Hydra JWT and
-  # returns the X-User/X-Email/X-DFSP-ID/X-Roles headers the API trusts.
+  # returns the X-Scope rows the decision endpoint computed
   oathkeeper:
     image: oryd/oathkeeper:v26.2.0
     command: serve --config /etc/config/oathkeeper/oathkeeper.yml
@@ -475,7 +550,11 @@ services:
       - ory-config:/etc/config:ro
     labels:
       - "traefik.http.middlewares.oathkeeper-auth.forwardauth.address=http://oathkeeper:4456/decisions"
-      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.authResponseHeaders=X-User,X-Email,X-DFSP-ID,X-Roles"
+      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.authResponseHeaders=X-Scope"
+      # An empty value removes the header from the request. Anonymous routes
+      # never reach the decision endpoint, so without this a client's own
+      # X-Scope would travel to the service on exactly those routes.
+      - "traefik.http.middlewares.drop-scope.headers.customrequestheaders.X-Scope="
     depends_on:
       kratos:
         condition: service_healthy
@@ -483,27 +562,13 @@ services:
         condition: service_healthy
       keto:
         condition: service_healthy
-      prepare-ory-config:
+      decision:
+        condition: service_started
+      prepare-authz:
         condition: service_completed_successfully
     restart: unless-stopped
 
-  # Seeds the initial hub-admin (Kratos identity + Hub:mojaloop#admins Keto
-  # tuple) so there is an account to log into the portal with.
-  iam-bootstrap:
-    image: alpine
-    environment:
-      - KRATOS_ADMIN_URL=http://kratos:4434
-      - KETO_WRITE_URL=http://keto:4467
-      - IAM_ADMIN_EMAIL=${IAM_ADMIN_EMAIL:-admin@mcm.local}
-      - IAM_ADMIN_PASSWORD=${IAM_ADMIN_PASSWORD:-admin1234}
-      - IAM_HUB_ADMIN_ROLE=${IAM_HUB_ADMIN_ROLE:-hub-admin}
-      - KETO_HUB_OBJECT=${KETO_HUB_OBJECT:-mojaloop}
-    volumes:
-      - ./docker/ory/bootstrap-admin.sh:/bootstrap-admin.sh:ro
-    entrypoint: ["/bin/sh", "-c", "apk add --no-cache curl jq >/dev/null && /bin/sh /bootstrap-admin.sh"]
-    depends_on:
-      kratos:
-        condition: service_healthy
-      keto:
-        condition: service_healthy
-    restart: "no"
+  # Seeds the deployment's default roles and an initial hub-admin so there is
+  # an account to log into the portal with. Validates every grant against the
+  # generated catalog, so a role naming a permission the service no longer
+  # advertises fails the run instead of writing a tuple nothing checks

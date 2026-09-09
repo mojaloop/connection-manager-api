@@ -127,7 +127,6 @@ exports.update = async (dfspId, newDfsp) => {
     throw new NotFoundError(`dfsp with ${dfspId}`);
   } else if (result === 1) {
     const dfsp = await exports.findByDfspId(dfspId);
-    // return { dfspId: dfsp.dfsp_id, name: dfsp.name, monetaryZoneId: dfsp.monetaryZoneId, securityGroup: dfsp.security_group };
     return rowToObject(dfsp);
   } else {
     throw new InternalError('E_TOO_MANY_ROWS');
@@ -150,9 +149,10 @@ exports.upsertStatesStatus = async (dfspId, statesJson) => {
   return result;
 };
 
-exports.findAllWithStatesStatus = async () => {
+exports.findAllWithStatesStatus = async (dfspIds) => {
   const data = await runQuery((knex) => knex.table(DFSP_TABLE)
     .leftJoin('dfsp_states_status', 'dfsps.dfsp_id', 'dfsp_states_status.dfspId')
+    .modify((query) => dfspIds && query.whereIn('dfsps.dfsp_id', dfspIds))
     .select(
       'dfsps.dfsp_id',
       'dfsps.pingStatus',
@@ -168,7 +168,6 @@ const rowToObject = (dfsp) => {
     dfspId: dfsp.dfsp_id,
     name: dfsp.name,
     monetaryZoneId: dfsp.monetaryZoneId ? dfsp.monetaryZoneId : undefined,
-    isProxy: dfsp.isProxy,
-    securityGroup: dfsp.security_group
+    isProxy: dfsp.isProxy
   };
 };

@@ -21,6 +21,7 @@ const ValidationError = require('../../src/errors/ValidationError');
 const NotFoundError = require('../../src/errors/NotFoundError');
 const { createInternalHubCA, getHubCA } = require('../../src/service/HubCAService');
 const { createContext, destroyContext } = require('../int/context');
+const { EVERYTHING } = require('@mojaloop/authz');
 const database = require('../../src/db/database');
 const { createUniqueDfsp } = require('./test-helpers');
 
@@ -193,7 +194,7 @@ describe('PkiService', () => {
       await PkiService.createDFSP(ctx, dfsp1);
       await PkiService.createDFSP(ctx, dfsp2);
 
-      const dfsps = await PkiService.getDFSPs(ctx);
+      const dfsps = await PkiService.getDFSPs(ctx, EVERYTHING);
       expect(Array.isArray(dfsps)).toBe(true);
       expect(dfsps).toHaveLength(2);
     });
@@ -205,7 +206,7 @@ describe('PkiService', () => {
       await PkiService.createDFSP(ctx, dfsp1);
       await PkiService.createDFSP(ctx, dfsp2);
 
-      const dfsps = await PkiService.getDfspsByMonetaryZones(ctx, 'EUR');
+      const dfsps = await PkiService.getDfspsByMonetaryZones(ctx, 'EUR', EVERYTHING);
       expect(Array.isArray(dfsps)).toBe(true);
       expect(dfsps).toHaveLength(1);
       expect(dfsps[0].monetaryZoneId).toBe('EUR');

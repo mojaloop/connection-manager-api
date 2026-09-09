@@ -19,6 +19,17 @@ const utils = require('../utils/writer.js');
 const JWSCertsService = require('../service/JWSCertsService');
 const { getRequestData } = require('../utils/request.js');
 
+/**
+ * The DFSP a request is made on behalf of, read from the gateway-supplied
+ * visible set. A caller standing for exactly one DFSP is that DFSP; a hub
+ * caller sees every DFSP and stands for none, so the entries it reports carry
+ * no source.
+ */
+const callerDfspId = (req) => {
+  const dfsps = req.authz(req, 'dfsps');
+  return dfsps.restricted && dfsps.ids.length === 1 ? dfsps.ids[0] : undefined;
+};
+
 exports.createDfspJWSCerts = (req, res, next) => {
   const { body, params: { dfspId } } = getRequestData(req);
   JWSCertsService.createDfspJWSCerts(req.context, dfspId, body)
@@ -31,8 +42,8 @@ exports.createDfspJWSCerts = (req, res, next) => {
 };
 
 exports.createDfspExternalJWSCerts = (req, res, next) => {
-  const { body, headers: { 'X-DFSP-ID': sourceDfspId } } = getRequestData(req);
-  JWSCertsService.createDfspExternalJWSCerts(req.context, body, sourceDfspId)
+  const { body } = getRequestData(req);
+  JWSCertsService.createDfspExternalJWSCerts(req.context, body, callerDfspId(req))
     .then(response => {
       utils.writeJson(res, response);
     })

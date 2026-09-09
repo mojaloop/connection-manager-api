@@ -10,7 +10,7 @@ serve:
     port: 4468
 
 namespaces:
-  location: file:///etc/keto-namespaces/mcm.keto.ts
+  location: file:///etc/config/authz/keto-namespaces.ts
 
 log:
   level: debug

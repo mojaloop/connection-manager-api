@@ -5,6 +5,7 @@ const ValidationError = require('../../../src/errors/ValidationError');
 const NotFoundError = require('../../../src/errors/NotFoundError');
 const { createCSRAndDFSPOutboundEnrollment } = require('../../../src/service/DfspOutboundService');
 const { createUniqueDfsp } = require('../test-helpers');
+const { EVERYTHING, restrictedTo } = require('@mojaloop/authz');
 
 jest.mock('../../../src/models/DFSPModel');
 jest.mock('../../../src/service/DfspOutboundService');
@@ -99,110 +100,29 @@ describe('PkiService', () => {
   });
 
   describe('getDFSPs', () => {
-    it('should return all DFSPs when no user is provided', async () => {
-      const ctx = {};
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'EUR', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
+    const dfspRows = [
+      { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false },
+      { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'EUR', isProxy: true },
+      { dfsp_id: 'dfsp3', name: 'DFSP 3', monetaryZoneId: 'USD', isProxy: false }
+    ];
 
+    beforeEach(() => {
       jest.spyOn(DFSPModel, 'findAll').mockResolvedValue(dfspRows);
-      jest.spyOn(PkiService, 'dfspRowToObject').mockImplementation(row => ({
-        id: row.dfsp_id,
-        name: row.name,
-        monetaryZoneId: row.monetaryZoneId,
-        isProxy: row.isProxy,
-        securityGroup: row.security_group
-      }));
-
-      const result = await PkiService.getDFSPs(ctx);
-      expect(result).toEqual(dfspRows.map(PkiService.dfspRowToObject));
     });
 
-    it('should return all DFSPs when user has hub-admin role', async () => {
-      const ctx = {};
-      const user = { roles: ['hub-admin', 'everyone'] };
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'EUR', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
-
-      jest.spyOn(DFSPModel, 'findAll').mockResolvedValue(dfspRows);
-      jest.spyOn(PkiService, 'dfspRowToObject').mockImplementation(row => ({
-        id: row.dfsp_id,
-        name: row.name,
-        monetaryZoneId: row.monetaryZoneId,
-        isProxy: row.isProxy,
-        securityGroup: row.security_group
-      }));
-
-      const result = await PkiService.getDFSPs(ctx, user);
-      expect(result).toEqual(dfspRows.map(PkiService.dfspRowToObject));
+    it('returns every DFSP to an unrestricted caller', async () => {
+      const result = await PkiService.getDFSPs({}, EVERYTHING);
+      expect(result.map(r => r.id)).toEqual(['dfsp1', 'dfsp2', 'dfsp3']);
     });
 
-    it('should return filtered DFSPs when user has specific DFSP roles', async () => {
-      const ctx = {};
-      const user = { roles: ['dfsp:dfsp1', 'everyone'] };
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'EUR', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
-
-      jest.spyOn(DFSPModel, 'findAll').mockResolvedValue(dfspRows);
-      jest.spyOn(PkiService, 'dfspRowToObject').mockImplementation(row => ({
-        id: row.dfsp_id,
-        name: row.name,
-        monetaryZoneId: row.monetaryZoneId,
-        isProxy: row.isProxy,
-        securityGroup: row.security_group
-      }));
-
-      const result = await PkiService.getDFSPs(ctx, user);
+    it('narrows the list to the DFSPs the scope names', async () => {
+      const result = await PkiService.getDFSPs({}, restrictedTo(['dfsp1']));
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('dfsp1');
     });
 
-    it('should return all DFSPs when user has hub-admin role and no DFSP roles', async () => {
-      const ctx = {};
-      const user = { roles: ['hub-admin', 'everyone'] };
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'EUR', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
-
-      jest.spyOn(DFSPModel, 'findAll').mockResolvedValue(dfspRows);
-      jest.spyOn(PkiService, 'dfspRowToObject').mockImplementation(row => ({
-        id: row.dfsp_id,
-        name: row.name,
-        monetaryZoneId: row.monetaryZoneId,
-        isProxy: row.isProxy,
-        securityGroup: row.security_group
-      }));
-
-      const result = await PkiService.getDFSPs(ctx, user);
-      expect(result).toEqual(dfspRows.map(PkiService.dfspRowToObject));
-    });
-
-    it('should return multiple DFSPs when user has multiple DFSP roles', async () => {
-      const ctx = {};
-      const user = { roles: ['dfsp:dfsp1', 'dfsp:dfsp3', 'everyone'] };
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'EUR', isProxy: true, security_group: 'Application/DFSP:dfsp2' },
-        { dfsp_id: 'dfsp3', name: 'DFSP 3', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp3' }
-      ];
-
-      jest.spyOn(DFSPModel, 'findAll').mockResolvedValue(dfspRows);
-      jest.spyOn(PkiService, 'dfspRowToObject').mockImplementation(row => ({
-        id: row.dfsp_id,
-        name: row.name,
-        monetaryZoneId: row.monetaryZoneId,
-        isProxy: row.isProxy,
-        securityGroup: row.security_group
-      }));
-
-      const result = await PkiService.getDFSPs(ctx, user);
-      expect(result).toHaveLength(2);
+    it('keeps every DFSP the scope names, and only those', async () => {
+      const result = await PkiService.getDFSPs({}, restrictedTo(['dfsp1', 'dfsp3']));
       expect(result.map(r => r.id)).toEqual(['dfsp1', 'dfsp3']);
     });
   });
@@ -223,16 +143,9 @@ describe('PkiService', () => {
     it('should return a DFSP by its id', async () => {
       const ctx = {};
       const { dfspId } = createUniqueDfsp();
-      const dfspRow = { dfsp_id: dfspId, name: 'Test DFSP', monetaryZoneId: 'USD', isProxy: false, security_group: 'Group1' };
+      const dfspRow = { dfsp_id: dfspId, name: 'Test DFSP', monetaryZoneId: 'USD', isProxy: false };
 
       jest.spyOn(DFSPModel, 'findByDfspId').mockResolvedValue(dfspRow);
-      jest.spyOn(PkiService, 'dfspRowToObject').mockImplementation(row => ({
-      id: row.dfsp_id,
-      name: row.name,
-      monetaryZoneId: row.monetaryZoneId,
-      isProxy: row.isProxy,
-      securityGroup: row.security_group
-      }));
 
       const result = await PkiService.getDFSPById(ctx, dfspId);
       expect(result).toEqual(PkiService.dfspRowToObject(dfspRow));
@@ -372,47 +285,23 @@ describe('PkiService', () => {
   });
 
   describe('getDfspsByMonetaryZones', () => {
-    it('should return DFSPs by monetary zone when no user is provided', async () => {
-      const ctx = {};
-      const monetaryZoneId = 'USD';
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'USD', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
+    const monetaryZoneId = 'USD';
+    const dfspRows = [
+      { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false },
+      { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'USD', isProxy: true }
+    ];
 
+    beforeEach(() => {
       DFSPModel.getDfspsByMonetaryZones.mockResolvedValue(dfspRows);
-
-      const result = await PkiService.getDfspsByMonetaryZones(ctx, monetaryZoneId);
-      expect(result).toEqual(dfspRows.map(PkiService.dfspRowToObject));
     });
 
-    it('should return all DFSPs by monetary zone when user has hub-admin role', async () => {
-      const ctx = {};
-      const user = { roles: ['hub-admin', 'everyone'] };
-      const monetaryZoneId = 'USD';
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'USD', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
-
-      DFSPModel.getDfspsByMonetaryZones.mockResolvedValue(dfspRows);
-
-      const result = await PkiService.getDfspsByMonetaryZones(ctx, monetaryZoneId, user);
-      expect(result).toEqual(dfspRows.map(PkiService.dfspRowToObject));
+    it('returns the zone\'s DFSPs to an unrestricted caller', async () => {
+      const result = await PkiService.getDfspsByMonetaryZones({}, monetaryZoneId, EVERYTHING);
+      expect(result.map(r => r.id)).toEqual(['dfsp1', 'dfsp2']);
     });
 
-    it('should return filtered DFSPs by monetary zone when user has specific DFSP roles', async () => {
-      const ctx = {};
-      const user = { roles: ['dfsp:dfsp1', 'everyone'] };
-      const monetaryZoneId = 'USD';
-      const dfspRows = [
-        { dfsp_id: 'dfsp1', name: 'DFSP 1', monetaryZoneId: 'USD', isProxy: false, security_group: 'Application/DFSP:dfsp1' },
-        { dfsp_id: 'dfsp2', name: 'DFSP 2', monetaryZoneId: 'USD', isProxy: true, security_group: 'Application/DFSP:dfsp2' }
-      ];
-
-      DFSPModel.getDfspsByMonetaryZones.mockResolvedValue(dfspRows);
-
-      const result = await PkiService.getDfspsByMonetaryZones(ctx, monetaryZoneId, user);
+    it('narrows the zone\'s DFSPs to the ones the scope names', async () => {
+      const result = await PkiService.getDfspsByMonetaryZones({}, monetaryZoneId, restrictedTo(['dfsp1']));
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('dfsp1');
     });
