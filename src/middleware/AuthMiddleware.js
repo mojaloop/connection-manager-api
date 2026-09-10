@@ -33,7 +33,7 @@
  *
  * @param {import('@mojaloop/authz').Guard} authz  built from this service's document
  */
-exports.createHeaderTrustMiddleware = (authz) => (req, res, next) => {
+exports.createGuardMiddleware = (authz) => (req, res, next) => {
   req.authz = authz;
   next();
 };

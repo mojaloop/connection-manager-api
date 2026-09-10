@@ -148,7 +148,7 @@ exports.connect = async () => {
   // Every handler asks req.authz what its caller may reach, so it is on the
   // request before the routes are
   const authz = await createGuard(path.join(__dirname, 'api/openapi.yaml'));
-  app.use(AuthMiddleware.createHeaderTrustMiddleware(authz));
+  app.use(AuthMiddleware.createGuardMiddleware(authz));
 
   app.use(
     OpenApiValidator.middleware({

@@ -23,7 +23,7 @@ Everything else is derived from `scopedBy`, the one thing an operation says
 about authorization: which resource types its answer is scoped by. Where the path binds an
 id for a declared type the operation is checked against `dfsps/{dfspId}`, and
 where it does not it is checked against the service singleton. Either way the
-declared types are what reaches the caller in `X-Scope`. Ids deeper in the path
+declared types are what the service is handed to narrow by. Ids deeper in the path
 (an enrollment, an endpoint item) are business data inside an already-authorized
 DFSP, so they declare nothing.
 
@@ -76,44 +76,36 @@ docker build -t mojaloop/ml-iam-services:local ../ml-iam-services
 
 ## What the service receives
 
-Requests arrive already authorized, carrying one header:
-
-```
-X-Scope   dfsps=dfsp-a,dfsp-b   |   dfsps=*   |   none
-```
-
-The resource type is spelled as the path segment that carries it, so DFSP rows
-arrive under `dfsps`. `none` carries no types and nothing is visible; the
-gateway strips any inbound copy, so absence cannot be forged. The service never
-learns who the caller is: who did what is answered by the decision endpoint's
-record, which carries the subject, the checks and the verdict for every
-request.
-
-The header format is not this repository's to define. `@mojaloop/authz` holds
-it, so the endpoint that writes the header and every service that reads it
-cannot drift, and `src/authz/scope.js` is only the name of the one resource
-type this service owns rows of:
+Requests arrive already authorized. How a decision travels is `@mojaloop/authz`'s
+alone; nothing in this repository names it. The guard reads this service's own
+document once and goes on the request:
 
 ```js
-const { INTERNAL, parseScope, idsInScope } = require('@mojaloop/authz');
-
-const DFSP_RESOURCE = 'dfsps';
-const dfspIdsInScope = (scope) => idsInScope(scope, DFSP_RESOURCE);
+const authz = await createGuard(path.join(__dirname, 'api/openapi.yaml'));
+app.use(AuthMiddleware.createGuardMiddleware(authz));
 ```
 
-Row filtering is then one clause in the query layer:
+A controller asks it what the caller may reach of one type, and the service
+narrows its own rows by that:
 
 ```js
-const ids = dfspIdsInScope(req.scope);
-return ids === undefined ? rows : rows.filter((r) => ids.includes(r.id));
+Pki.getDFSPs(req.context, req.authz(req, 'dfsps'))
+
+exports.getDFSPs = async (ctx, visible) =>
+  visible.narrow((await DFSPModel.findAll()).map(exports.dfspRowToObject), (dfsp) => dfsp.id);
 ```
 
-`undefined` means no restriction, an empty array means nothing is visible, and
-the two must never be confused. A call with no scope at all raises rather than
-reading as unrestricted, so a service-to-service read says so by name:
+The service never learns who the caller is: who did what is answered by the
+decision endpoint's record, which carries the subject, the checks and the
+verdict for every request.
+
+A caller the guard finds may reach nothing is refused before a handler runs, so
+a service reads `restricted` to decide whether to narrow at all and never
+mistakes "reaches nothing" for "reaches everything". A read with no request
+behind it — a job, a test — says so by name:
 
 ```js
-await PkiService.getDFSPs(ctx, INTERNAL);
+await PkiService.getDFSPs(ctx, EVERYTHING);
 ```
 
 ## Roles and grants
