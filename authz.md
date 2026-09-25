@@ -1,23 +1,27 @@
 # MCM Authorization
 
 This service's entire authorization surface is its OpenAPI document,
-`src/api/openapi.yaml`. The platform reads it at deploy time and generates the
-gateway rules and the permission model from it; this repository contains no
-rules file, no permission model, and no roles.
+`src/api/openapi.yaml`. The service answers with it on its own routes, and the
+platform generates the gateway rules and the permission model from what it
+answered; this repository contains no rules file, no permission model, and no
+roles.
 
 ## What the document declares
 
-Each operation is one permission, named `mcm.<operationId>`:
+Each operation is one permission, named `<service>.<operationId>` — the service
+being the value the route gives this backend, so the document itself names
+none:
 
 ```yaml
 /dfsps/{dfspId}/ca:
   get:
     operationId: getDFSPca
     summary: Returns the DFSP CA certificates    # shown in the role UI
-    security:
-    - session: []                                # a human's Kratos session
-    - machineToken: []                           # a machine's Hydra token
 ```
+
+An `operationId` is therefore part of the authorization contract: renaming one
+retires a permission and introduces another, and the roles referencing it move
+across in two phases.
 
 Everything else is derived from `scopedBy`, the one thing an operation says
 about authorization: which resource types its answer is scoped by. Where the path binds an
@@ -36,43 +40,37 @@ x-authz:
                           # DFSP: no id in the path, rows are still per DFSP
   scopedBy: []            # rows belong to nobody: hub endpoint items, the peer
                           # JWS directory, monetary zones
-
-security: []              # anonymous, no permission exists (/health)
 ```
 
 A GET returning an array whose path binds no id must say which of these it is;
 silence fails the build, because an operation that returns rows nothing scopes
 is how a tenant sees another tenant's data.
 
-`x-authz` accepts only `scopedBy` and `permission` (an explicit, stable
-permission name that survives handler renames), plus `service` at the document
-root. Anything else fails the build.
+`x-authz` accepts only `scopedBy` on an operation and `resourceTypes` at the
+document root. Anything else fails the build. An operation open to everyone is
+one the `$everyone` role holds, which is a grant an operator can see rather
+than a property of the document, so `/health` declares nothing special.
 
 ## How it is registered
 
-The platform chart registers the service in `global.authz`, naming where the
-API document sits inside the image and which host serves it:
+An annotation on the route that already serves it, keyed by the name the route
+gives this backend (the chart's `<fullname>-api` Service):
 
 ```yaml
-global:
-  authz:
-    - name: mcm
-      image: mojaloop/connection-manager-api:<tag>
-      spec: /opt/app/src/api/openapi.yaml
-      url:
-        host: api.mcm.example.com
-        # path: /mcm      # when served under a prefix of a shared host
+metadata:
+  annotations:
+    iam.mojaloop.io/mcm-connection-manager-api.service: mcm
 ```
 
-The aggregator mounts the image, reads that document, and generates this
-service's access rules and namespace with the host and mount path filled in.
+The platform resolves that backend to this service and reads the document from
+it, so nothing names an image, a tag or a path inside one:
 
-The local stack does the same thing through `prepare-authz` in
-`docker-compose.yaml`, which needs the tooling image once:
+```js
+app.use(authz.expose());   // answers GET /.authz/openapi with what it loaded
+```
 
-```
-docker build -t mojaloop/ml-iam-services:local ../ml-iam-services
-```
+Which host and mount the rules match on comes from the route's own hostnames
+and path matches.
 
 ## What the service receives
 
@@ -115,18 +113,20 @@ advertises, held in the IAM and written only by it. This repository declares
 nothing about who may do what, and holds no Keto access.
 
 When it creates a DFSP it creates that DFSP's machine client and admin
-identity, then names the resource and those two principals to the IAM:
+identity, then names the resource to the IAM under the resource name the
+deployment configured into it:
 
 ```
 POST iam-provisioning/provision
-{ "type": "dfsps", "id": "dfsp7",
-  "principals": { "admin": "<identity id>", "machine": "dfsp7" } }
+{ "resourceName": "Participant", "id": "dfsp7" }
 ```
 
-Which roles that implies is the deployment's decision. Deleting the DFSP
-reverses it, and the IAM answers with the identities left holding no role, so
-this service can retire an operator who works for nobody else without reading
-the permission graph.
+That records only that the resource exists. Who holds which role over it
+arrives as ordinary assignments this service makes explicitly, with role names
+from the same configuration, so which roles a new DFSP implies stays the
+deployment's decision. Deleting the DFSP reverses it, and the IAM answers with
+the identities left holding no role, so this service can retire an operator who
+works for nobody else without reading the permission graph.
 
 ## References
 

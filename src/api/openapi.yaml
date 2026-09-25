@@ -3,9 +3,9 @@ info:
   title: Connection Manager API
   description: Connection Manager API
   version: 1.6.0
-# Permission names are prefixed with this service identity: mcm.<operationId>
+# Permission names are <prefix>.<operationId>, the prefix being the one the
+# route gives this backend
 x-authz:
-  service: mcm
   resourceTypes: [dfsps]
 servers:
   - url: /api

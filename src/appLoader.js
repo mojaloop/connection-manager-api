@@ -128,6 +128,11 @@ exports.connect = async () => {
     await ServerCertsService.createHubServerCerts(ctx);
   }
 
+  // Every handler asks req.authz what its caller may reach, so it is on the
+  // request before the routes are
+  const authz = await createGuard(path.join(__dirname, 'api/openapi.yaml'));
+  app.use(authz.expose());
+
   // Body parsers come before anything that reads a body, which the validator
   // does. The limits are body-parser's defaults.
   app.use(bodyParser.json());
@@ -145,9 +150,6 @@ exports.connect = async () => {
     app.use(DfspIdValidationMiddleware.createDfspIdValidationMiddleware());
   }
 
-  // Every handler asks req.authz what its caller may reach, so it is on the
-  // request before the routes are
-  const authz = await createGuard(path.join(__dirname, 'api/openapi.yaml'));
   app.use(AuthMiddleware.createGuardMiddleware(authz));
 
   app.use(
