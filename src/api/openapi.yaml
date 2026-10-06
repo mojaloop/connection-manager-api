@@ -42,6 +42,8 @@ paths:
       summary: Health check endpoint that verifies service and database connectivity
       operationId: getHealth
       security: []
+      x-authz:
+        internal: true
       responses:
         200:
           description: Service is healthy
