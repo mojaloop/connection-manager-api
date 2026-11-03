@@ -21,9 +21,11 @@ const ValidationError = require('../../src/errors/ValidationError');
 const NotFoundError = require('../../src/errors/NotFoundError');
 const { createInternalHubCA, getHubCA } = require('../../src/service/HubCAService');
 const { createContext, destroyContext } = require('../int/context');
-const { EVERYTHING } = require('@mojaloop/authz');
+const { caller } = require('@mojaloop/authz/testing');
 const database = require('../../src/db/database');
 const { createUniqueDfsp } = require('./test-helpers');
+
+const hub = caller().reachingAll('dfsps');
 
 const ROOT_CA = {
   CN: 'hub.modusbox.org',
@@ -194,7 +196,7 @@ describe('PkiService', () => {
       await PkiService.createDFSP(ctx, dfsp1);
       await PkiService.createDFSP(ctx, dfsp2);
 
-      const dfsps = await PkiService.getDFSPs(ctx, EVERYTHING);
+      const dfsps = await PkiService.getDFSPs(ctx, hub.access('dfsps'));
       expect(Array.isArray(dfsps)).toBe(true);
       expect(dfsps).toHaveLength(2);
     });
@@ -206,7 +208,7 @@ describe('PkiService', () => {
       await PkiService.createDFSP(ctx, dfsp1);
       await PkiService.createDFSP(ctx, dfsp2);
 
-      const dfsps = await PkiService.getDfspsByMonetaryZones(ctx, 'EUR', EVERYTHING);
+      const dfsps = await PkiService.getDfspsByMonetaryZones(ctx, 'EUR', hub.access('dfsps'));
       expect(Array.isArray(dfsps)).toBe(true);
       expect(dfsps).toHaveLength(1);
       expect(dfsps[0].monetaryZoneId).toBe('EUR');

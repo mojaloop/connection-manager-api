@@ -25,6 +25,7 @@ const ValidationCodes = require('../pki_engine/ValidationCodes');
 const Constants = require('../constants/Constants');
 const { createCSRAndDFSPOutboundEnrollment } = require('./DfspOutboundService');
 const DfspIamService = require('./DfspIamService');
+const formatValidator = require('../utils/formatValidator');
 const { logger } = require('../log/logger');
 
 const log = logger.child({ component: 'PkiService' });
@@ -39,22 +40,30 @@ const log = logger.child({ component: 'PkiService' });
 exports.createDFSP = async (ctx, body) => {
   log.info('Creating DFSP with body:', body);
 
-  await DfspIamService.provisionDfsp(body.dfspId, body.email);
+  formatValidator.validateDfspId(body.dfspId);
+  DfspIamService.validateOnboarding(body.email);
+
+  const values = {
+    dfsp_id: body.dfspId,
+    name: body.name,
+    monetaryZoneId: body.monetaryZoneId ? body.monetaryZoneId : undefined,
+    isProxy: body.isProxy
+  };
 
   try {
-    const values = {
-      dfsp_id: body.dfspId,
-      name: body.name,
-      monetaryZoneId: body.monetaryZoneId ? body.monetaryZoneId : undefined,
-      isProxy: body.isProxy
-    };
-
     await DFSPModel.create(values);
+  } catch (err) {
+    log.error('error in createDFSP: ', err);
+    throw new InternalError(err.message);
+  }
+
+  try {
     await DFSPModel.createFxpSupportedCurrencies(body.dfspId, body.fxpCurrencies);
+    await DfspIamService.provisionDfsp(body.dfspId, body.email);
     return { id: body.dfspId };
   } catch (err) {
     log.error('error in createDFSP: ', err);
-    await DfspIamService.deprovisionDfsp(body.dfspId).catch((e) => log.warn('IAM rollback failed', { e: e.message }));
+    await DFSPModel.delete(body.dfspId).catch((e) => log.warn('DFSP rollback failed', { e: e.message }));
     throw err instanceof ValidationError
       ? err
       : new InternalError(err.message);

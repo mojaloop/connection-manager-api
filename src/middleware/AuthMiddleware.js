@@ -26,6 +26,9 @@
 
 'use strict';
 
+const { EVERYTHING } = require('@mojaloop/authz');
+const Constants = require('../constants/Constants');
+
 /**
  * Puts this service's guard on the request, so a handler asks it what the
  * caller may see of a type and filters its rows by that. What the answer is
@@ -34,6 +37,6 @@
  * @param {import('@mojaloop/authz').Guard} authz  built from this service's document
  */
 exports.createGuardMiddleware = (authz) => (req, res, next) => {
-  req.authz = authz;
+  req.authz = Constants.IAM.ENABLED ? authz : () => EVERYTHING;
   next();
 };

@@ -3,8 +3,6 @@ info:
   title: Connection Manager API
   description: Connection Manager API
   version: 1.6.0
-# Permission names are <prefix>.<operationId>, the prefix being the one the
-# route gives this backend
 x-authz:
   resourceTypes: [dfsps]
 servers:
@@ -41,7 +39,6 @@ paths:
       - Health
       summary: Health check endpoint that verifies service and database connectivity
       operationId: getHealth
-      security: []
       x-authz:
         internal: true
       responses:
@@ -102,9 +99,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
   /hub/endpoints/ingress/ips:
     get:
       tags:
@@ -124,9 +118,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - Hub-Endpoint-configuration
@@ -148,8 +139,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
   /hub/endpoints/ingress/ips/{epId}:
     get:
       tags:
@@ -173,9 +162,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
@@ -204,8 +190,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
@@ -224,8 +208,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
   /hub/endpoints/ingress/urls:
     get:
       tags:
@@ -245,9 +227,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointURL'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - Hub-Endpoint-configuration
@@ -269,8 +248,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointURL'
-      security:
-      - session: []
   /hub/endpoints/ingress/urls/{epId}:
     get:
       tags:
@@ -293,9 +270,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
@@ -324,8 +298,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
@@ -344,8 +316,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
   /hub/endpoints/egress/ips:
     get:
       tags:
@@ -365,9 +335,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - Hub-Endpoint-configuration
@@ -389,8 +356,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
   /hub/endpoints/egress/ips/{epId}:
     get:
       tags:
@@ -413,9 +378,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
@@ -444,8 +406,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
@@ -464,8 +424,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
   /hub/endpoints/{epId}:
     get:
       tags:
@@ -488,9 +446,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - Hub-Endpoint-configuration
@@ -519,8 +474,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
     delete:
       tags:
       - Hub-Endpoint-configuration
@@ -539,8 +492,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
   /hub/servercerts:
     get:
       tags:
@@ -559,9 +510,6 @@ paths:
         404:
           description: server certs not set
           content: {}
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - Hub-server-certificates-configuration
@@ -582,8 +530,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerCert'
-      security:
-      - session: []
     delete:
       tags:
       - Hub-server-certificates-configuration
@@ -595,8 +541,6 @@ paths:
         204:
           description: no content
           content: {}
-      security:
-      - session: []
   /hub/ca:
     get:
       tags:
@@ -614,9 +558,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - Hub-Certificate-Authority
@@ -641,8 +582,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
     put:
       tags:
       - Hub-Certificate-Authority
@@ -677,8 +616,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
     delete:
       tags:
       - Hub-Certificate-Authority
@@ -692,8 +629,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
   /hub/jwscerts:
     get:
       tags:
@@ -711,9 +646,6 @@ paths:
         404:
           description: Hub JWS certs not set
           content: {}
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
         - JWS-certificates-configuration
@@ -734,8 +666,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JWSCert'
-      security:
-      - session: []
   /hub/jwscerts/rotate:
     put:
       tags:
@@ -756,8 +686,6 @@ paths:
                 properties:
                   error:
                     type: string
-      security:
-      - session: []
   /dfsps/jwscerts:
     get:
       tags:
@@ -782,9 +710,6 @@ paths:
         404:
           description: JWS certs not set
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /external-dfsps/jwscerts:
     post:
       tags:
@@ -814,8 +739,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DFSPJWSCert'
-      security:
-      - machineToken: []
   /dfsps:
     get:
       tags:
@@ -834,8 +757,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DFSP'
-      security:
-      - session: []
     post:
       tags:
       - dfsp-config
@@ -860,8 +781,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ObjectCreatedResponse'
-      security:
-      - session: []
   /dfsps/states-status:
     get:
       tags:
@@ -876,8 +795,6 @@ paths:
       # Rows are per DFSP, so the caller sees only the DFSPs in its scope
       x-authz:
         scopedBy: [dfsps]
-      security:
-      - session: []
       responses:
         200:
           description: Successful operation
@@ -916,8 +833,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
   /dfsps/servercerts:
     get:
       tags:
@@ -941,8 +856,6 @@ paths:
         404:
           description: server certs not set
           content: {}
-      security:
-      - session: []
   /dfsps/{dfspId}:
     put:
       tags:
@@ -971,8 +884,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DFSPUpdate'
-      security:
-      - session: []
   /dfsps/{dfspId}/ca:
     get:
       tags:
@@ -996,9 +907,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-Certificate-Authority
@@ -1040,9 +948,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/inbound:
     get:
       tags:
@@ -1070,9 +975,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/InboundEnrollment'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-client-certificate
@@ -1105,9 +1007,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/inbound/{enId}:
     get:
       tags:
@@ -1134,9 +1033,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/InboundEnrollment'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/inbound/{enId}/sign:
     post:
       tags:
@@ -1172,9 +1068,6 @@ paths:
         422:
           description: don't have internal CA
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound:
     get:
       tags:
@@ -1205,9 +1098,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/csr:
     post:
       tags:
@@ -1240,9 +1130,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/onboard:
     post:
       tags:
@@ -1263,9 +1150,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/{enId}:
     get:
       tags:
@@ -1292,9 +1176,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OutboundEnrollment'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/{enId}/certificate:
     post:
       tags:
@@ -1334,9 +1215,6 @@ paths:
         400:
           description: validation error
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/enrollments/outbound/{enId}/validate:
     post:
       tags:
@@ -1364,9 +1242,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/OutboundEnrollment'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints:
     get:
       tags:
@@ -1389,9 +1264,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/unprocessed:
     get:
       tags:
@@ -1414,9 +1286,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress:
     get:
       tags:
@@ -1437,9 +1306,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetDFSPIngressRes'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1467,9 +1333,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateDFSPIngressRes'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/ips:
     get:
       tags:
@@ -1492,9 +1355,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1522,9 +1382,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/ips/{epId}:
     get:
       tags:
@@ -1551,9 +1408,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -1586,9 +1440,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -1611,9 +1462,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/urls:
     get:
       tags:
@@ -1636,9 +1484,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointURL'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1666,9 +1511,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointURL'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/ingress/urls/{epId}:
     get:
       tags:
@@ -1695,9 +1537,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -1730,9 +1569,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -1755,9 +1591,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/egress:
     get:
       tags:
@@ -1778,9 +1611,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/GetDFSPEgressRes'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1808,9 +1638,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/CreateDFSPEgressRes'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/egress/ips:
     get:
       tags:
@@ -1833,9 +1660,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-Endpoint-configuration
@@ -1863,9 +1687,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointIp'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/egress/ips/{epId}:
     get:
       tags:
@@ -1892,9 +1713,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -1927,9 +1745,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -1952,9 +1767,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/{epId}:
     get:
       tags:
@@ -1981,9 +1793,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - DFSP-Endpoint-configuration
@@ -2016,9 +1825,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
     delete:
       tags:
       - DFSP-Endpoint-configuration
@@ -2041,9 +1847,6 @@ paths:
         204:
           description: successful operation
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/endpoints/{epId}/confirmation:
     post:
       tags:
@@ -2070,9 +1873,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/EndPointAny'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/servercerts:
     get:
       tags:
@@ -2097,9 +1897,6 @@ paths:
         404:
           description: server certs not set
           content: {}
-      security:
-      - session: []
-      - machineToken: []
     put:
       tags:
       - DFSP-server-certificates-configuration
@@ -2127,9 +1924,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerCert'
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - DFSP-server-certificates-configuration
@@ -2157,9 +1951,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ServerCert'
-      security:
-      - session: []
-      - machineToken: []
     delete:
       tags:
       - DFSP-server-certificates-configuration
@@ -2177,9 +1968,6 @@ paths:
         204:
           description: no content
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/jwscerts:
     get:
       tags:
@@ -2204,9 +1992,6 @@ paths:
         404:
           description: JWS certs not set
           content: {}
-      security:
-      - session: []
-      - machineToken: []
     post:
       tags:
       - JWS-certificates-configuration
@@ -2234,9 +2019,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/JWSCert'
-      security:
-      - session: []
-      - machineToken: []
     delete:
       tags:
       - JWS-certificates-configuration
@@ -2254,9 +2036,6 @@ paths:
         204:
           description: no content
           content: {}
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/status:
     get:
       summary: Retrieves dfsp status
@@ -2276,9 +2055,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/DfspStatus'
-      security:
-      - session: []
-      - machineToken: []
   /dfsps/{dfspId}/states:
     post:
       tags:
@@ -2286,9 +2062,6 @@ paths:
       summary: Upload status of DFSP states
       description: Upload status of DFSP states
       operationId: uploadDfspStatesStatus
-      security:
-      - session: []
-      - machineToken: []
       parameters:
         - name: dfspId
           in: path
@@ -2348,8 +2121,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-      security:
-      - session: []
     post:
       tags:
       - API-Credentials
@@ -2382,8 +2153,6 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/ApiResponse'
-      security:
-      - session: []
   /monetaryzones:
     get:
       tags:
@@ -2402,8 +2171,6 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/MonetaryZone'
-      security:
-      - session: []
   /monetaryzones/{monetaryZoneId}/dfsps:
     get:
       tags:
@@ -2429,167 +2196,8 @@ paths:
                 type: array
                 items:
                   $ref: '#/components/schemas/DFSPCreate'
-      security:
-      - session: []
 components:
   schemas:
-    LoginResponse:
-      type: object
-      properties:
-        ok:
-          type: boolean
-        token:
-          type: object
-          properties:
-            payload:
-              type: object
-              properties:
-                at_hash:
-                  type: string
-                  description: ""
-                aud:
-                  type: string
-                  description: ""
-                sub:
-                  type: string
-                  description: Subject
-                nbf:
-                  type: integer
-                  description: ""
-                azp:
-                  type: string
-                  description: ""
-                amr:
-                  type: array
-                  description: User groups
-                  items:
-                    type: string
-                iss:
-                  type: string
-                  description: Issuer
-                groups:
-                  type: array
-                  description: User groups
-                  items:
-                    type: string
-                exp:
-                  type: integer
-                  description: ""
-                iat:
-                  type: integer
-                  description: ""
-                dfspId:
-                  type: string
-                  description: DFSP id. To be used when calling the API
-                userguid:
-                  type: string
-                  description: GUID to be used for reset password
-        userguid:
-          type: string
-        askPassword:
-          type: boolean
-        sharedSecret:
-          type: string
-        issuer:
-          type: string
-        label:
-          type: string
-        enrolled:
-          type: boolean
-        2faEnabled:
-          type: boolean
-      description: login response
-      examples:
-      - ok: true,
-        token:
-          payload:
-            at_hash: bJi28CeD9HLPf1ouOVkQTA
-            aud: CLIENT_KEY
-            sub: dfsp1
-            nbf: 1558709500
-            azp: CLIENT_KEY
-            amr:
-            - password
-            iss: https://hydra.example.com/
-            groups:
-            - dfsp1
-            exp: 1558713100
-            iat: 1558709500
-            dfspId: DFSP1
-            userguid: userguid
-        userguid: userguid
-        askPassword: true
-        sharedSecret: xxxx
-        issuer: MCM
-        label: devMCM
-        enrolled: true
-        2faEnabled: false
-    LoginResponse2Step:
-      type: object
-      properties:
-        ok:
-          type: boolean
-        token:
-          type: object
-          properties:
-            payload:
-              type: object
-              properties:
-                at_hash:
-                  type: string
-                  description: ""
-                aud:
-                  type: string
-                  description: ""
-                sub:
-                  type: string
-                  description: Subject
-                nbf:
-                  type: integer
-                  description: ""
-                azp:
-                  type: string
-                  description: ""
-                amr:
-                  type: array
-                  description: User groups
-                  items:
-                    type: string
-                iss:
-                  type: string
-                  description: Issuer
-                groups:
-                  type: array
-                  description: User groups
-                  items:
-                    type: string
-                exp:
-                  type: integer
-                  description: ""
-                iat:
-                  type: integer
-                  description: ""
-                dfspId:
-                  type: string
-                  description: DFSP id. To be used when calling the API
-      description: login2step response
-      examples:
-      - ok: true,
-        token:
-          payload:
-            at_hash: bJi28CeD9HLPf1ouOVkQTA
-            aud: CLIENT_KEY
-            sub: dfsp1
-            nbf: 1558709500
-            azp: CLIENT_KEY
-            amr:
-            - password
-            iss: https://hydra.example.com/
-            groups:
-            - dfsp1
-            exp: 1558713100
-            iat: 1558709500
-            dfspId: DFSP1
     ValidInvalidState:
       type: boolean
     ValidationState:
@@ -3692,14 +3300,3 @@ components:
         - clientSecret
         - createdAt
       description: API client credentials for OAuth integration
-  securitySchemes:
-    # A human's browser session, issued by Ory Kratos.
-    session:
-      type: apiKey
-      in: cookie
-      name: ory_kratos_session
-    # A machine client's access token, issued by Ory Hydra.
-    machineToken:
-      type: http
-      scheme: bearer
-      bearerFormat: JWT

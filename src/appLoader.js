@@ -26,7 +26,6 @@ const OpenApiValidator = require('express-openapi-validator');
 const { createGuard } = require('@mojaloop/authz');
 const { createWinstonLogger, logger } = require('./log/logger');
 const AuthMiddleware = require('./middleware/AuthMiddleware');
-const DfspIdValidationMiddleware = require('./middleware/DfspIdValidationMiddleware');
 const HubCAService = require('./service/HubCAService');
 const ServerCertsService = require('./service/ServerCertsService');
 
@@ -146,10 +145,6 @@ exports.connect = async () => {
   app.use(cors(corsUtils.getCorsOptions));
   app.use(createWinstonLogger());
 
-  if (Constants.dfspIdHeaderValidationEnabled) {
-    app.use(DfspIdValidationMiddleware.createDfspIdValidationMiddleware());
-  }
-
   app.use(AuthMiddleware.createGuardMiddleware(authz));
 
   app.use(
@@ -157,9 +152,6 @@ exports.connect = async () => {
       apiSpec: path.join(__dirname, 'api/openapi.yaml'),
       validateRequests: true,
       validateResponses: false,
-      // The gateway authenticated and authorized the request before it
-      // reached this process; the document's security schemes are what the
-      // generator derives those gateway rules from.
       validateSecurity: false,
       operationHandlers: {
         basePath: controllersPath,
@@ -172,7 +164,13 @@ exports.connect = async () => {
     res.status(err.status || 500).json({ message: err.message, errors: err.errors });
   });
 
-  return app;
+  return {
+    app,
+    close: async () => {
+      pkiEngine.disconnect();
+      await db.disconnect();
+    },
+  };
 };
 
 /**

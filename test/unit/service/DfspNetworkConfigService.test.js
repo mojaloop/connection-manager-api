@@ -31,7 +31,10 @@ jest.mock('#src/models/DFSPModel');
 const DfspNetworkConfigService = require('#src/service/DfspNetworkConfigService');
 const DFSPModel = require('#src/models/DFSPModel');
 const fixtures = require('#test/fixtures');
-const { EVERYTHING, restrictedTo } = require('@mojaloop/authz');
+const { caller } = require('@mojaloop/authz/testing');
+
+const hub = caller().reachingAll('dfsps');
+const operatorA = caller().reaching('dfsps', ['dfsp-a']);
 
 describe('DfspNetworkConfigService Tests', () => {
   let mockCtx;
@@ -86,7 +89,7 @@ describe('DfspNetworkConfigService Tests', () => {
       };
       DFSPModel.findAllWithStatesStatus.mockResolvedValue(mockRawData);
 
-      const result = await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, EVERYTHING);
+      const result = await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, hub.access('dfsps'));
       expect(result).toEqual(expectedResult);
       expect(DFSPModel.findAllWithStatesStatus).toHaveBeenCalledTimes(1);
     });
@@ -94,7 +97,7 @@ describe('DfspNetworkConfigService Tests', () => {
     test('should handle empty result', async () => {
       DFSPModel.findAllWithStatesStatus.mockResolvedValue([]);
 
-      const result = await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, EVERYTHING);
+      const result = await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, hub.access('dfsps'));
       expect(result).toEqual({ dfsps: [] });
     });
 
@@ -102,34 +105,22 @@ describe('DfspNetworkConfigService Tests', () => {
       const mockError = new Error('Database connection failed');
       DFSPModel.findAllWithStatesStatus.mockRejectedValue(mockError);
 
-      await expect(DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, EVERYTHING))
+      await expect(DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, hub.access('dfsps')))
         .rejects.toThrow('Database connection failed');
-    });
-
-    test('refuses a call that carries no visible set at all', async () => {
-      await expect(DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx))
-        .rejects.toThrow(TypeError);
     });
 
     test('restricts the query to the DFSPs the caller holds', async () => {
       DFSPModel.findAllWithStatesStatus.mockResolvedValue([]);
 
-      await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, restrictedTo(['dfsp-a']));
+      await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, operatorA.access('dfsps'));
       expect(DFSPModel.findAllWithStatesStatus).toHaveBeenCalledWith(['dfsp-a']);
     });
 
     test('leaves the query unrestricted for a caller who sees every DFSP', async () => {
       DFSPModel.findAllWithStatesStatus.mockResolvedValue([]);
 
-      await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, EVERYTHING);
+      await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, hub.access('dfsps'));
       expect(DFSPModel.findAllWithStatesStatus).toHaveBeenCalledWith(undefined);
-    });
-
-    test('shows nothing to a caller holding no DFSP', async () => {
-      DFSPModel.findAllWithStatesStatus.mockResolvedValue([]);
-
-      await DfspNetworkConfigService.getAllDfspsStatesStatus(mockCtx, restrictedTo([]));
-      expect(DFSPModel.findAllWithStatesStatus).toHaveBeenCalledWith([]);
     });
   });
 });

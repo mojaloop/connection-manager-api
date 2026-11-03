@@ -28,6 +28,7 @@
 
 const NotFoundError = require('../errors/NotFoundError');
 const DfspIamService = require('./DfspIamService');
+const PkiService = require('./PkiService');
 const { logger } = require('../log/logger');
 
 const VAULT_PATH_PREFIX = 'api-credentials';
@@ -36,6 +37,7 @@ const createCredentials = async (context, dfspId) => {
   try {
     const credentialsPath = `${VAULT_PATH_PREFIX}/${dfspId}`;
 
+    await PkiService.validateDfsp(context, dfspId);
     const { clientId, clientSecret } = await DfspIamService.rotateDfspClientCredentials(dfspId);
 
     const credentials = {

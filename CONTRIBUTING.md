@@ -28,7 +28,7 @@ cp .env-example .env
 
 ### Running Locally (dev profile)
 
-The `dev` profile starts infrastructure (DB, Keycloak, Vault, Mailpit, Traefik) and UI, while routing API traffic to your local machine.
+The `dev` profile starts infrastructure (DB, Vault, the IAM simulator, Traefik) and UI, while routing API traffic to your local machine.
 
 ```bash
 # 1. Start infrastructure
@@ -44,8 +44,6 @@ npm start
 Access services:
 - API: http://mcm.localhost/api
 - UI: http://mcm.localhost
-- Keycloak: http://keycloak.mcm.localhost
-- Mailpit: http://mailpit.mcm.localhost
 - Vault: http://vault.mcm.localhost
 
 ### Making Changes

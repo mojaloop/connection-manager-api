@@ -51,6 +51,7 @@ class VaultPKIEngine extends PKIEngine {
     this.signExpiryHours = signExpiryHours;
     this.bundleTtl = bundleTtl;
     this.reconnectTimer = null;
+    this.session = 0;
     this.keyLength = keyLength;
     this.keyAlgorithm = keyAlgorithm;
 
@@ -63,6 +64,7 @@ class VaultPKIEngine extends PKIEngine {
     let creds;
 
     clearTimeout(this.reconnectTimer);
+    const session = ++this.session;
 
     if (this.auth.appRole) {
       creds = await this.vault.approleLogin({
@@ -78,6 +80,7 @@ class VaultPKIEngine extends PKIEngine {
     } else {
       throw new Error('Unsupported auth method');
     }
+    if (session !== this.session) return;
     this.client = vault({
       endpoint: this.endpoint,
       token: creds.auth.client_token,
@@ -90,6 +93,7 @@ class VaultPKIEngine extends PKIEngine {
   }
 
   disconnect () {
+    this.session++;
     clearTimeout(this.reconnectTimer);
   }
 

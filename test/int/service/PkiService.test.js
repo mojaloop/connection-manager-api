@@ -5,10 +5,12 @@ const ValidationError = require('../../../src/errors/ValidationError');
 const NotFoundError = require('../../../src/errors/NotFoundError');
 const { createCSRAndDFSPOutboundEnrollment } = require('../../../src/service/DfspOutboundService');
 const { createUniqueDfsp } = require('../test-helpers');
-const { EVERYTHING, restrictedTo } = require('@mojaloop/authz');
+const { caller } = require('@mojaloop/authz/testing');
 
 jest.mock('../../../src/models/DFSPModel');
 jest.mock('../../../src/service/DfspOutboundService');
+
+const hub = caller().reachingAll('dfsps');
 
 describe('PkiService', () => {
   afterEach(() => {
@@ -111,18 +113,18 @@ describe('PkiService', () => {
     });
 
     it('returns every DFSP to an unrestricted caller', async () => {
-      const result = await PkiService.getDFSPs({}, EVERYTHING);
+      const result = await PkiService.getDFSPs({}, hub.access('dfsps'));
       expect(result.map(r => r.id)).toEqual(['dfsp1', 'dfsp2', 'dfsp3']);
     });
 
     it('narrows the list to the DFSPs the scope names', async () => {
-      const result = await PkiService.getDFSPs({}, restrictedTo(['dfsp1']));
+      const result = await PkiService.getDFSPs({}, caller().reaching('dfsps', ['dfsp1']).access('dfsps'));
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('dfsp1');
     });
 
     it('keeps every DFSP the scope names, and only those', async () => {
-      const result = await PkiService.getDFSPs({}, restrictedTo(['dfsp1', 'dfsp3']));
+      const result = await PkiService.getDFSPs({}, caller().reaching('dfsps', ['dfsp1', 'dfsp3']).access('dfsps'));
       expect(result.map(r => r.id)).toEqual(['dfsp1', 'dfsp3']);
     });
   });
@@ -296,12 +298,12 @@ describe('PkiService', () => {
     });
 
     it('returns the zone\'s DFSPs to an unrestricted caller', async () => {
-      const result = await PkiService.getDfspsByMonetaryZones({}, monetaryZoneId, EVERYTHING);
+      const result = await PkiService.getDfspsByMonetaryZones({}, monetaryZoneId, hub.access('dfsps'));
       expect(result.map(r => r.id)).toEqual(['dfsp1', 'dfsp2']);
     });
 
     it('narrows the zone\'s DFSPs to the ones the scope names', async () => {
-      const result = await PkiService.getDfspsByMonetaryZones({}, monetaryZoneId, restrictedTo(['dfsp1']));
+      const result = await PkiService.getDfspsByMonetaryZones({}, monetaryZoneId, caller().reaching('dfsps', ['dfsp1']).access('dfsps'));
       expect(result).toHaveLength(1);
       expect(result[0].id).toBe('dfsp1');
     });

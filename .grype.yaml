@@ -123,6 +123,234 @@ ignore:
   - vulnerability: GHSA-jggg-4jg4-v7c6
     package:
       name: protobufjs
+  - vulnerability: GHSA-27p8-2357-5qqv
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-2883-xcg3-v3hh
+    package:
+      name: js-yaml
+  - vulnerability: GHSA-2gqq-gqf2-x968
+    package:
+      name: undici
+  - vulnerability: GHSA-2jfj-6hjv-fm6j
+    package:
+      name: undici
+  - vulnerability: GHSA-2m5v-pch6-74hx
+    package:
+      name: undici
+  - vulnerability: GHSA-333x-w4r6-6crp
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-3g3m-2fjr-6pw4
+    package:
+      name: glob
+  - vulnerability: GHSA-3jxr-9vmj-r5cp
+    package:
+      name: brace-expansion
+  - vulnerability: GHSA-3pph-fpjx-jg34
+    package:
+      name: multer
+  - vulnerability: GHSA-3wwx-pv8p-q78v
+    package:
+      name: undici
+  - vulnerability: GHSA-3xpg-4rpp-hhhm
+    package:
+      name: undici
+  - vulnerability: GHSA-4528-x5fx-h6hg
+    package:
+      name: joi
+  - vulnerability: GHSA-4c8g-83qw-93j6
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-4cwx-7wf7-3272
+    package:
+      name: undici
+  - vulnerability: GHSA-4p3w-j4w9-5jqw
+    package:
+      name: moment
+  - vulnerability: GHSA-4qv8-2p9j-2685
+    package:
+      name: undici
+  - vulnerability: GHSA-4w3w-2rp5-g8jm
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-4w7w-5xrc-9h26
+    package:
+      name: undici
+  - vulnerability: GHSA-52cp-r559-cp3m
+    package:
+      name: js-yaml
+  - vulnerability: GHSA-535w-7cp7-47q4
+    package:
+      name: multer
+  - vulnerability: GHSA-55wc-3pg8-jfw6
+    package:
+      name: undici
+  - vulnerability: GHSA-5p4m-2wfm-xmqj
+    package:
+      name: js-yaml
+  - vulnerability: GHSA-6gmq-8vp8-gcm6
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-6h8r-xr42-gp59
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-6j4f-fj2g-mc7p
+    package:
+      name: brace-expansion
+  - vulnerability: GHSA-73wf-gq98-2v4g
+    package:
+      name: browserslist
+  - vulnerability: GHSA-7p8r-x3mc-p8w7
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-8344-3jmq-59r6
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-8436-99hf-9mmv
+    package:
+      name: undici
+  - vulnerability: GHSA-8r5x-fm3f-whwj
+    package:
+      name: handlebars
+  - vulnerability: GHSA-8r9p-f939-6h3c
+    package:
+      name: follow-redirects
+  - vulnerability: GHSA-8xcm-r25x-g524
+    package:
+      name: undici
+  - vulnerability: GHSA-93r5-fhx6-vmg9
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-965w-775f-mr7g
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-9fm3-97px-rjf6
+    package:
+      name: undici
+  - vulnerability: GHSA-c7q8-3ch8-vqpv
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-c83g-rgw3-j3cx
+    package:
+      name: browserslist
+  - vulnerability: GHSA-f596-whhp-79r4
+    package:
+      name: "@grpc/grpc-js"
+  - vulnerability: GHSA-f65p-4m7j-42xc
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-f72v-6w45-q472
+    package:
+      name: undici
+  - vulnerability: GHSA-fph4-wmhf-6fwf
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-g3hv-75wg-m249
+    package:
+      name: minimatch
+  - vulnerability: GHSA-gcqx-w48m-w2h4
+    package:
+      name: deepmerge
+  - vulnerability: GHSA-hrr3-gc8f-f4qj
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-j3f2-48v5-ccww
+    package:
+      name: protobufjs
+  - vulnerability: GHSA-jqff-g426-hqxp
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-jr45-8vmc-qm54
+    package:
+      name: undici
+  - vulnerability: GHSA-m8rv-5g2x-5cg5
+    package:
+      name: undici
+  - vulnerability: GHSA-m9gg-hp2v-232j
+    package:
+      name: "@grpc/grpc-js"
+  - vulnerability: GHSA-mh99-v99m-4gvg
+    package:
+      name: brace-expansion
+  - vulnerability: GHSA-mrwp-f3q8-3g9p
+    package:
+      name: follow-redirects
+  - vulnerability: GHSA-p8wg-vrv2-v86f
+    package:
+      name: handlebars
+  - vulnerability: GHSA-pmjh-fq2x-6v4x
+    package:
+      name: undici
+  - vulnerability: GHSA-q2hr-2g5m-vwhr
+    package:
+      name: brace-expansion
+  - vulnerability: GHSA-q3jh-wrc6-jgq8
+    package:
+      name: follow-redirects
+  - vulnerability: GHSA-q7qp-rjg7-q26m
+    package:
+      name: multer
+  - vulnerability: GHSA-qfvm-cv95-jqjf
+    package:
+      name: multer
+  - vulnerability: GHSA-qhr7-859c-m2p7
+    package:
+      name: brace-expansion
+  - vulnerability: GHSA-qrxm-fqhp-jwvm
+    package:
+      name: undici
+  - vulnerability: GHSA-qvfw-j98x-7q72
+    package:
+      name: multer
+  - vulnerability: GHSA-qw65-cvwx-89v3
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-r53p-7pc4-xj5r
+    package:
+      name: undici
+  - vulnerability: GHSA-rfgv-xxqx-mfg5
+    package:
+      name: undici
+  - vulnerability: GHSA-rgw5-rvv9-x895
+    package:
+      name: brace-expansion
+  - vulnerability: GHSA-rx4f-c7p8-82vq
+    package:
+      name: undici
+  - vulnerability: GHSA-v2hh-gcrm-f6hx
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-v3r7-h72x-cjcm
+    package:
+      name: undici
+  - vulnerability: GHSA-w293-vg96-wgc3
+    package:
+      name: undici
+  - vulnerability: GHSA-w2rr-34g9-rvrj
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-w5vr-8v7q-w6rv
+    package:
+      name: baseline-browser-mapping
+  - vulnerability: GHSA-w74x-v6f9-j3xg
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-wc9g-mqfw-jrwm
+    package:
+      name: multer
+  - vulnerability: GHSA-x4fp-j954-r2f4
+    package:
+      name: "@xmldom/xmldom"
+  - vulnerability: GHSA-xhq7-xmqj-769h
+    package:
+      name: fast-uri
+  - vulnerability: GHSA-xjj6-f33q-929c
+    package:
+      name: undici
+  - vulnerability: GHSA-xw65-4hp5-5hc7
+    package:
+      name: handlebars
 
 # Set output format defaults
 output:

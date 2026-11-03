@@ -15,10 +15,13 @@
  *  limitations under the License                                             *
  ******************************************************************************/
 
+const { createLifecycle, serve, EXIT_CODE } = require('./lifecycle');
+
+const lifecycle = createLifecycle();
+
 const nodeHttp = require('http');
 const Constants = require('./constants/Constants');
 const appLoader = require('./appLoader');
-const { createDFSP: defaultCreateDFSP } = require('./service/PkiService');
 const { createMetricsServer } = require('./mertics-server');
 const { logger } = require('./log/logger');
 const serverPort = Constants.SERVER.PORT;
@@ -26,33 +29,48 @@ const serverPort = Constants.SERVER.PORT;
 const run = async ({
   connect = appLoader.connect,
   constants = Constants,
-  createDFSP = defaultCreateDFSP,
   http = nodeHttp,
 } = {}) => {
   logger.debug('connection-manager-api starting with constants:', constants);
   logger.debug('connection-manager-api starting with process env:', process.env);
 
-  const appConnected = await connect();
-
-  // Start the server
-  http.createServer(appConnected).listen(serverPort, function () {
-    logger.info(`Connection-Manager API server is listening on port ${serverPort}...`);
-    logger.info(`Swagger-ui is available on http://localhost:${serverPort}/docs`);
+  let app;
+  return lifecycle.start({
+    logger,
+    steps: [
+      async () => {
+        const connected = await connect();
+        app = connected.app;
+        return connected.close;
+      },
+      async () => {
+        const close = await serve(http.createServer(app), serverPort);
+        logger.info(`Connection-Manager API server is listening on port ${serverPort}...`);
+        logger.info(`Swagger-ui is available on http://localhost:${serverPort}/docs`);
+        return close;
+      },
+      async () => {
+        const metricsServer = createMetricsServer();
+        await metricsServer.start();
+        return () => metricsServer.stop();
+      },
+      async () => {
+        if (!constants.dfspWatcherEnabled) return undefined;
+        const { createDfspWatcher } = require('./dfsp-watcher');
+        const watcher = createDfspWatcher();
+        await watcher.start();
+        return () => watcher.stopWatching();
+      }
+    ],
   });
-
-  const metricsServer = createMetricsServer();
-  await metricsServer.start();
-
-  if (Constants.dfspWatcherEnabled) {
-    const { createDfspWatcher } = require('./dfsp-watcher');
-    const watcher = createDfspWatcher();
-    await watcher.start();
-  }
 };
 
 // This structure enables us to mock and test
 if (require.main === module) {
-  run();
+  run().catch((err) => {
+    logger.error('Connection-Manager API failed to start', err);
+    process.exit(EXIT_CODE.FAILURE);
+  });
 } else {
   module.exports = run;
 }

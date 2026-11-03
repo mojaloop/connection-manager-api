@@ -1,25 +1,5 @@
-x-api-env: &api-env
-  - IAM_ENABLED=true
-  - IAM_AUTO_CREATE_ACCOUNTS=true
-  - HYDRA_PUBLIC_URL=http://hydra.${COMPOSE_DOMAIN:-mcm.localhost}
-  - HYDRA_ADMIN_URL=http://hydra-admin.${COMPOSE_DOMAIN:-mcm.localhost}
-  - HYDRA_AUDIENCE=connection-manager-api
-  - KRATOS_PUBLIC_URL=http://kratos.${COMPOSE_DOMAIN:-mcm.localhost}
-  - KRATOS_ADMIN_URL=http://kratos-admin.${COMPOSE_DOMAIN:-mcm.localhost}
-  - KRATOS_IDENTITY_SCHEMA_ID=default
-  - KRATOS_INVITE_RETURN_TO_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}/
-  - IAM_PROVISIONING_URL=http://iam-provisioning:3003
-  - IAM_DFSP_RESOURCE_NAME=Participant
-  - IAM_DFSP_ADMIN_ROLE=dfsp-operator
-  - IAM_DFSP_CLIENT_ROLE=dfsp-client
-  - CLIENT_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
-
 x-api-labels: &api-labels
-  # Oathkeeper gates /api on the API host, cookie for humans and JWT for machines
   - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
-  # The scope is written by the decision endpoint and by nothing else, so a
-  # client's own copy is dropped before anything downstream can read it
-  - "traefik.http.routers.mcm-api.middlewares=drop-scope,oathkeeper-auth"
   - "traefik.http.services.mcm-api.loadbalancer.server.port=3001"
 
 x-api-healthcheck: &api-healthcheck
@@ -32,11 +12,6 @@ x-api-healthcheck: &api-healthcheck
 volumes:
   vault-data: {}
   vault-creds: {}
-  mailpit-data: {}
-  ory-config: {}
-  hydra-sqlite: {}
-  kratos-sqlite: {}
-  keto-sqlite: {}
 
 services:
 
@@ -57,28 +32,19 @@ services:
         aliases:
           - ${COMPOSE_DOMAIN:-mcm.localhost}
           - vault.${COMPOSE_DOMAIN:-mcm.localhost}
-          - mailpit.${COMPOSE_DOMAIN:-mcm.localhost}
-          - hydra.${COMPOSE_DOMAIN:-mcm.localhost}
-          - hydra-admin.${COMPOSE_DOMAIN:-mcm.localhost}
-          - kratos.${COMPOSE_DOMAIN:-mcm.localhost}
-          - kratos-admin.${COMPOSE_DOMAIN:-mcm.localhost}
-          - keto-read.${COMPOSE_DOMAIN:-mcm.localhost}
-          - keto-write.${COMPOSE_DOMAIN:-mcm.localhost}
-          - auth.${COMPOSE_DOMAIN:-mcm.localhost}
     restart: always
 
+  # Build the image once with:
+  #   docker build -t mojaloop/connection-manager-ui:local ../connection-manager-ui
   connection-manager-ui:
-    image: mojaloop/connection-manager-ui
+    image: mojaloop/connection-manager-ui:${MCM_UI_TAG:-local}
     hostname: connection-manager-ui
     profiles:
       - dev
       - full
     environment:
-      - AUTH_ENABLED=TRUE
-      - API_BASE_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}
-      - LOGIN_URL=http://kratos.${COMPOSE_DOMAIN:-mcm.localhost}/self-service/login/browser
-      - LOGOUT_URL=http://kratos.${COMPOSE_DOMAIN:-mcm.localhost}/self-service/logout/browser
-      - CHECK_SESSION_URL=http://kratos.${COMPOSE_DOMAIN:-mcm.localhost}/sessions/whoami
+      - AUTH_ENABLED=FALSE
+      - API_BASE_URL=http://${COMPOSE_DOMAIN:-mcm.localhost}:${TRAEFIK_HTTP_PORT:-80}
     labels:
       - "traefik.http.routers.mcm-ui.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && !PathPrefix(`/api`)"
       - "traefik.http.services.mcm-ui.loadbalancer.server.port=8080"
@@ -92,27 +58,10 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NPM_CONFIG_REGISTRY
     profiles:
       - ci
-    env_file:
-      - ./docker/migration.env
-    depends_on:
-      connection-manager-db:
-        condition: service_healthy
-      vault-init:
-        condition: service_completed_successfully
-    volumes:
-      - vault-creds:/vault
-    command: npm run migrate
-    restart: "no"
-
-  connection-manager-migration-full:
-    image: mojaloop/connection-manager-api
-    pull_policy: if_not_present
-    build:
-      context: .
-      dockerfile: Dockerfile
-    profiles:
       - full
     env_file:
       - ./docker/migration.env
@@ -128,17 +77,12 @@ services:
 
   connection-manager-api-proxy:
     image: alpine/socat
-    command: tcp-listen:${PORT:-3001},fork,reuseaddr tcp-connect:host.docker.internal:${PORT:-3001}
+    command: tcp-listen:3001,fork,reuseaddr tcp-connect:host.docker.internal:${PORT:-3001}
     profiles:
       - dev
     extra_hosts:
       - "host.docker.internal:host-gateway"
-    labels:
-      - "traefik.http.routers.mcm-api.rule=Host(`${COMPOSE_DOMAIN:-mcm.localhost}`) && PathPrefix(`/api`)"
-      - "traefik.http.services.mcm-api.loadbalancer.server.port=${PORT:-3001}"
-      # The scope is written by the decision endpoint and by nothing else, so a
-      # client's own copy is dropped before anything downstream can read it
-      - "traefik.http.routers.mcm-api.middlewares=drop-scope,oathkeeper-auth"
+    labels: *api-labels
 
   connection-manager-api:
     image: mojaloop/connection-manager-api:local
@@ -146,42 +90,13 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+      args:
+        - NPM_CONFIG_REGISTRY
     profiles:
       - ci
-    env_file:
-      - ./docker/api.env
-    environment: *api-env
-    labels: *api-labels
-    volumes:
-      - vault-creds:/vault
-      - ./docker/mcm/resources:/resources:ro
-    tty: true
-    stdin_open: true
-    restart: always
-    depends_on:
-      vault-init:
-        condition: service_completed_successfully
-      hydra:
-        condition: service_healthy
-      kratos:
-        condition: service_healthy
-      iam-provisioning:
-        condition: service_healthy
-      connection-manager-migration:
-        condition: service_completed_successfully
-    healthcheck: *api-healthcheck
-
-  connection-manager-api-full:
-    image: mojaloop/connection-manager-api
-    pull_policy: if_not_present
-    build:
-      context: .
-      dockerfile: Dockerfile
-    profiles:
       - full
     env_file:
       - ./docker/api.env
-    environment: *api-env
     labels: *api-labels
     volumes:
       - vault-creds:/vault
@@ -192,13 +107,7 @@ services:
     depends_on:
       vault-init:
         condition: service_completed_successfully
-      hydra:
-        condition: service_healthy
-      kratos:
-        condition: service_healthy
-      iam-provisioning:
-        condition: service_healthy
-      connection-manager-migration-full:
+      connection-manager-migration:
         condition: service_completed_successfully
     healthcheck: *api-healthcheck
 
@@ -276,299 +185,3 @@ services:
     profiles:
       - dev
       - ci
-
-  mailpit:
-    image: axllent/mailpit:latest
-    labels:
-      - "traefik.http.routers.mailpit.rule=Host(`mailpit.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.services.mailpit.loadbalancer.server.port=8025"
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://localhost:8025/api/v1/info"]
-      interval: 10s
-      timeout: 5s
-      retries: 3
-      start_period: 5s
-
-  # Hydra mounts a named volume at /var/lib/sqlite but runs as a non-root user
-  # and the image doesn't pre-create the dir, so busybox makes it writable.
-  # Renders the Ory config templates, substituting ${COMPOSE_DOMAIN}, into the
-  # ory-config volume that the Ory services mount
-  prepare-ory-config:
-    image: alpine
-    environment:
-      - COMPOSE_DOMAIN=${COMPOSE_DOMAIN:-mcm.localhost}
-    volumes:
-      - ./docker/ory:/templates:ro
-      - ory-config:/rendered
-    entrypoint: ["/bin/sh", "/templates/render-config.sh"]
-    restart: "no"
-
-  # Generates the access rules and the permission model from the API document.
-  # Build the image once with:
-  #   docker build -t mojaloop/ml-iam-services:local ../ml-iam-services
-  prepare-authz:
-    image: mojaloop/ml-iam-services:${ML_IAM_SERVICES_TAG:-local}
-    user: root
-    command:
-      - authzgen
-      - --spec=/spec/openapi.yaml
-      - --out=/rendered/authz
-      # The API shares the UI's host under /api, which the spec's server entry
-      # already supplies, so the mount path is empty
-      - --host=${COMPOSE_DOMAIN:-mcm.localhost}
-      - --path=
-      - --resource-names=/resource-names.json
-    volumes:
-      - ./src/api:/spec:ro
-      - ./docker/ory/resource-names.json:/resource-names.json:ro
-      - ory-config:/rendered
-    depends_on:
-      prepare-ory-config:
-        condition: service_completed_successfully
-    restart: "no"
-
-  hydra-sqlite-init:
-    image: busybox
-    command: chmod -R 777 /var/lib/sqlite
-    volumes:
-      - hydra-sqlite:/var/lib/sqlite
-    restart: "no"
-
-  hydra-migrate:
-    image: oryd/hydra:v26.2.0
-    environment:
-      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
-    volumes:
-      - hydra-sqlite:/var/lib/sqlite
-      - ory-config:/etc/config:ro
-    command: migrate sql --yes --config /etc/config/hydra/hydra.yml -e
-    depends_on:
-      hydra-sqlite-init:
-        condition: service_completed_successfully
-      prepare-ory-config:
-        condition: service_completed_successfully
-    restart: "no"
-
-  hydra:
-    image: oryd/hydra:v26.2.0
-    command: serve all --dev --config /etc/config/hydra/hydra.yml
-    environment:
-      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
-    volumes:
-      - hydra-sqlite:/var/lib/sqlite
-      - ory-config:/etc/config:ro
-    labels:
-      - "traefik.http.routers.hydra.rule=Host(`hydra.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.hydra.service=hydra"
-      - "traefik.http.services.hydra.loadbalancer.server.port=4444"
-      - "traefik.http.routers.hydra-admin.rule=Host(`hydra-admin.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.hydra-admin.service=hydra-admin"
-      - "traefik.http.services.hydra-admin.loadbalancer.server.port=4445"
-    depends_on:
-      hydra-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:4444/health/ready"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-    restart: unless-stopped
-
-  kratos-migrate:
-    image: oryd/kratos:v26.2.0
-    environment:
-      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
-    volumes:
-      - kratos-sqlite:/var/lib/sqlite
-      - ory-config:/etc/config:ro
-    command: migrate sql --yes --config /etc/config/kratos/kratos.yml -e
-    depends_on:
-      prepare-ory-config:
-        condition: service_completed_successfully
-    restart: "no"
-
-  kratos:
-    image: oryd/kratos:v26.2.0
-    command: serve --dev --watch-courier --config /etc/config/kratos/kratos.yml
-    environment:
-      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
-    volumes:
-      - kratos-sqlite:/var/lib/sqlite
-      - ory-config:/etc/config:ro
-    labels:
-      - "traefik.http.routers.kratos.rule=Host(`kratos.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.kratos.service=kratos"
-      - "traefik.http.services.kratos.loadbalancer.server.port=4433"
-      - "traefik.http.routers.kratos-admin.rule=Host(`kratos-admin.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.kratos-admin.service=kratos-admin"
-      - "traefik.http.services.kratos-admin.loadbalancer.server.port=4434"
-    depends_on:
-      kratos-migrate:
-        condition: service_completed_successfully
-      mailpit:
-        condition: service_healthy
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:4433/health/ready"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-    restart: unless-stopped
-
-  kratos-ui:
-    image: oryd/kratos-selfservice-ui-node:v26.2.0
-    profiles:
-      - dev
-      - full
-    environment:
-      - PORT=3000
-      - KRATOS_PUBLIC_URL=http://kratos:4433
-      - KRATOS_BROWSER_URL=http://kratos.${COMPOSE_DOMAIN:-mcm.localhost}
-      - COOKIE_SECRET=changeme-please-changeme-please
-      - CSRF_COOKIE_NAME=mcm_csrf_token
-      - CSRF_COOKIE_SECRET=changeme-please-changeme-please
-      - DANGEROUSLY_DISABLE_SECURE_CSRF_COOKIES=true
-      - BASE_URL=http://auth.${COMPOSE_DOMAIN:-mcm.localhost}/
-    labels:
-      - "traefik.http.routers.kratos-ui.rule=Host(`auth.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.services.kratos-ui.loadbalancer.server.port=3000"
-    depends_on:
-      kratos:
-        condition: service_healthy
-    restart: unless-stopped
-
-  keto-sqlite-init:
-    image: busybox
-    command: chmod -R 777 /var/lib/sqlite
-    volumes:
-      - keto-sqlite:/var/lib/sqlite
-    restart: "no"
-
-  keto-migrate:
-    image: oryd/keto:v26.2.0
-    environment:
-      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
-    volumes:
-      - keto-sqlite:/var/lib/sqlite
-      - ory-config:/etc/config:ro
-    command: migrate up -y --config /etc/config/keto/keto.yml
-    depends_on:
-      keto-sqlite-init:
-        condition: service_completed_successfully
-      prepare-authz:
-        condition: service_completed_successfully
-    restart: "no"
-
-  keto:
-    image: oryd/keto:v26.2.0
-    command: serve --config /etc/config/keto/keto.yml
-    environment:
-      - DSN=sqlite:///var/lib/sqlite/db.sqlite?_fk=true&mode=rwc
-    volumes:
-      - keto-sqlite:/var/lib/sqlite
-      - ory-config:/etc/config:ro
-    labels:
-      - "traefik.http.routers.keto-read.rule=Host(`keto-read.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.keto-read.service=keto-read"
-      - "traefik.http.services.keto-read.loadbalancer.server.port=4466"
-      - "traefik.http.routers.keto-write.rule=Host(`keto-write.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.keto-write.service=keto-write"
-      - "traefik.http.services.keto-write.loadbalancer.server.port=4467"
-    depends_on:
-      keto-migrate:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:4466/health/ready"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-      start_period: 5s
-    restart: unless-stopped
-
-  # The single point that answers every rendered payload: it composes Keto
-  # checks into one verdict and computes the caller's visible rows. It holds
-  # read-only Keto access and has no route of its own.
-  decision:
-    image: mojaloop/ml-iam-services:${ML_IAM_SERVICES_TAG:-local}
-    command: ["decide"]
-    environment:
-      - PORT=3002
-      - KETO_READ_URL=http://keto:4466
-    depends_on:
-      keto:
-        condition: service_healthy
-    restart: unless-stopped
-
-  # The write side of the IAM. A service that creates a resource names it and
-  # its principals here; which roles that implies, and every tuple behind
-  # them, is decided from the deployment's role documents. Nothing else in the
-  # platform holds Keto write access.
-  iam-provisioning:
-    image: mojaloop/ml-iam-services:${ML_IAM_SERVICES_TAG:-local}
-    command:
-      - provisioning
-      - --roles=/default-roles.json
-      - --catalog=/config/authz/catalog.json
-      - --resource-names=/resource-names.json
-    environment:
-      - PORT=3003
-      - KETO_WRITE_URL=http://keto:4467
-      - KETO_READ_URL=http://keto:4466
-      - KRATOS_ADMIN_URL=http://kratos:4434
-      - IAM_ADMIN_EMAIL=${IAM_ADMIN_EMAIL:-admin@mcm.local}
-      - IAM_ADMIN_PASSWORD=${IAM_ADMIN_PASSWORD:-admin1234}
-      - IAM_HUB_ADMIN_ROLE=${IAM_HUB_ADMIN_ROLE:-hub-admin}
-    volumes:
-      - ./docker/ory/default-roles.json:/default-roles.json:ro
-      - ./docker/ory/resource-names.json:/resource-names.json:ro
-      - ory-config:/config:ro
-    labels:
-      - "traefik.http.routers.iam.rule=Host(`iam.${COMPOSE_DOMAIN:-mcm.localhost}`)"
-      - "traefik.http.routers.iam.service=iam"
-      - "traefik.http.services.iam.loadbalancer.server.port=3003"
-    depends_on:
-      keto:
-        condition: service_healthy
-      prepare-authz:
-        condition: service_completed_successfully
-    healthcheck:
-      test: ["CMD", "wget", "--spider", "--quiet", "http://127.0.0.1:3003/health"]
-      interval: 5s
-      timeout: 3s
-      retries: 30
-      start_period: 5s
-    restart: unless-stopped
-
-  # Zero-trust gateway: Traefik consults Oathkeeper (forward-auth) for every
-  # /api request. Oathkeeper validates the Kratos session or Hydra JWT and
-  # returns the X-Scope rows the decision endpoint computed
-  oathkeeper:
-    image: oryd/oathkeeper:v26.2.0
-    command: serve --config /etc/config/oathkeeper/oathkeeper.yml
-    volumes:
-      - ory-config:/etc/config:ro
-    labels:
-      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.address=http://oathkeeper:4456/decisions"
-      - "traefik.http.middlewares.oathkeeper-auth.forwardauth.authResponseHeaders=X-Scope"
-      # An empty value removes the header from the request. Anonymous routes
-      # never reach the decision endpoint, so without this a client's own
-      # X-Scope would travel to the service on exactly those routes.
-      - "traefik.http.middlewares.drop-scope.headers.customrequestheaders.X-Scope="
-    depends_on:
-      kratos:
-        condition: service_healthy
-      hydra:
-        condition: service_healthy
-      keto:
-        condition: service_healthy
-      decision:
-        condition: service_started
-      prepare-authz:
-        condition: service_completed_successfully
-    restart: unless-stopped
-
-  # Seeds the deployment's default roles and an initial hub-admin so there is
-  # an account to log into the portal with. Validates every grant against the
-  # generated catalog, so a role naming a permission the service no longer
-  # advertises fails the run instead of writing a tuple nothing checks

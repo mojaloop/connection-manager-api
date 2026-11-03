@@ -81,7 +81,6 @@ module.exports = {
   // If set to true, enables logging of request metadata using Winston.
   // Note: Enabling this may expose sensitive headers in logs.
   WINSTON_REQUEST_META_DATA: env.get('WINSTON_REQUEST_META_DATA').default('false').asBool(),
-  CLIENT_URL: env.get('CLIENT_URL').default('http://mcm.localhost/').asString(),
 
   IAM: {
     ENABLED: env.get('IAM_ENABLED').default('false').asBool(),
@@ -91,23 +90,11 @@ module.exports = {
     // the resource name the deployment files DFSPs under, and the role each
     // principal is assigned over the DFSP. The IAM decides what each grants.
     // An empty role assigns nothing.
-    DFSP_RESOURCE_NAME: env.get('IAM_DFSP_RESOURCE_NAME').default('').asString(),
+    DFSP_RESOURCE_NAME: env.get('IAM_DFSP_RESOURCE_NAME').default('participant').asString(),
     DFSP_ADMIN_ROLE: env.get('IAM_DFSP_ADMIN_ROLE').default('').asString(),
     DFSP_CLIENT_ROLE: env.get('IAM_DFSP_CLIENT_ROLE').default('').asString(),
-  },
-
-  HYDRA: {
-    ADMIN_URL: env.get('HYDRA_ADMIN_URL').default('http://hydra-admin.mcm.localhost').asString(),
-    PUBLIC_URL: env.get('HYDRA_PUBLIC_URL').default('http://hydra.mcm.localhost').asString(),
-    AUDIENCE: env.get('HYDRA_AUDIENCE').default('connection-manager-api').asString(),
-  },
-
-  KRATOS: {
-    ADMIN_URL: env.get('KRATOS_ADMIN_URL').default('http://kratos-admin.mcm.localhost').asString(),
-    PUBLIC_URL: env.get('KRATOS_PUBLIC_URL').default('http://kratos.mcm.localhost').asString(),
-    IDENTITY_SCHEMA_ID: env.get('KRATOS_IDENTITY_SCHEMA_ID').default('default').asString(),
-    INVITE_RETURN_TO_URL: env.get('KRATOS_INVITE_RETURN_TO_URL').default('http://mcm.localhost/').asString(),
-    INVITE_TOKEN_TTL: env.get('KRATOS_INVITE_TOKEN_TTL').default('168h').asString(),
+    // The audience the DFSP's machine client is issued tokens for
+    DFSP_CLIENT_AUDIENCE: env.get('IAM_DFSP_CLIENT_AUDIENCE').default('connection-manager-api').asString(),
   },
 
   EXTRA_TLS: {
@@ -157,18 +144,9 @@ module.exports = {
   },
   certManager,
 
-  auth: {
-    enabled: env.get('AUTH_ENABLED').asBoolStrict(),
-    creds: {
-      user: env.get('AUTH_USER').asString(),
-      pass: env.get('AUTH_PASS').asString(),
-    }
-  },
-
   clientCsrParameters: env.get('CLIENT_CSR_PARAMETERS').asJsonConfig(),
   serverCsrParameters: env.get('SERVER_CSR_PARAMETERS').asJsonConfig(),
   caCsrParameters: env.get('CA_CSR_PARAMETERS').asJsonConfig(),
 
   dfspWatcherEnabled: env.get('DFSP_WATCHER_ENABLED').default('false').asBool(),
-  dfspIdHeaderValidationEnabled: env.get('DFSP_ID_HEADER_VALIDATION_ENABLED').default('true').asBool(),
 };

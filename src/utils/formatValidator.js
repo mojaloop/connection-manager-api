@@ -74,9 +74,6 @@ exports.validatePorts = (ports) => {
 };
 
 /**
- * Validates that a DFSP ID meets identity-provider compatibility constraints
- * (used both as Hydra client_id and as a fragment of Keto object identifiers).
- *
  * @param {string} dfspId - The DFSP ID to validate
  * @throws {ValidationError}
  */

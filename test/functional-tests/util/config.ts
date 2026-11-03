@@ -25,11 +25,5 @@
 import env from 'env-var';
 
 export default {
-  mcmEndpoint: env.get('APP_ENDPOINT').required().asString(),
-  mcmExternalEndpoint: env.get('APP_EXTERNAL_ENDPOINT').required().asString(),
-  username: env.get('APP_OAUTH_USERNAME').required().asString(),
-  password: env.get('APP_OAUTH_PASSWORD').required().asString(),
-  mailpitEndpoint: env.get('MAILPIT_ENDPOINT').required().asString(),
-  kratosPublicUrl: env.get('KRATOS_PUBLIC_URL').required().asString(),
-  hydraPublicUrl: env.get('HYDRA_PUBLIC_URL').required().asString()
+  mcmEndpoint: env.get('APP_ENDPOINT').required().asString()
 };

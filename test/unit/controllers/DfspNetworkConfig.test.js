@@ -26,7 +26,7 @@
  ******/
 
 
-const { EVERYTHING } = require('@mojaloop/authz');
+const { caller } = require('@mojaloop/authz/testing');
 const DfspNetworkConfigController = require('#src/controllers/DfspNetworkConfig');
 const utils = require('../../../src/utils/writer.js');
 const DfspNetworkConfigService = require('../../../src/service/DfspNetworkConfigService');
@@ -39,6 +39,8 @@ jest.mock('../../../src/service/DfspNetworkConfigService', () => ({
   getAllDfspsStatesStatus: jest.fn()
 }));
 
+const hub = caller().reachingAll('dfsps');
+
 describe('DfspNetworkConfig Controller Unit Tests', () => {
   let mockReq, mockRes, mockNext;
 
@@ -48,7 +50,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
         pkiEngine: {},
         certManager: {}
       },
-      authz: () => EVERYTHING
+      authz: hub.guard
     };
     mockRes = {};
     mockNext = jest.fn();
@@ -81,7 +83,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       DfspNetworkConfigController.handleGetDfspsStatesStatus(mockReq, mockRes, mockNext);
 
       await new Promise(setImmediate);
-      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, EVERYTHING);
+      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, hub.access('dfsps'));
       expect(utils.writeJson).toHaveBeenCalledWith(mockRes, mockResponse);
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -93,7 +95,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       DfspNetworkConfigController.handleGetDfspsStatesStatus(mockReq, mockRes, mockNext);
 
       await new Promise(setImmediate);
-      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, EVERYTHING);
+      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, hub.access('dfsps'));
       expect(utils.writeJson).toHaveBeenCalledWith(mockRes, mockError, mockError.status);
       expect(mockNext).not.toHaveBeenCalled();
     });
@@ -105,7 +107,7 @@ describe('DfspNetworkConfig Controller Unit Tests', () => {
       DfspNetworkConfigController.handleGetDfspsStatesStatus(mockReq, mockRes, mockNext);
 
       await new Promise(setImmediate);
-      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, EVERYTHING);
+      expect(DfspNetworkConfigService.getAllDfspsStatesStatus).toHaveBeenCalledWith(mockReq.context, hub.access('dfsps'));
     });
   });
 });

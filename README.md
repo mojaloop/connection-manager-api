@@ -8,36 +8,18 @@ It provides a REST API, described using an [OpenAPI document](./src/api/openapi.
 
 The current version uses both [cfssl](https://github.com/modusintegration/cfssl) and [openssl](https://www.openssl.org/) as the PKI engines which issue and process CSRs and Certificates. The specific version of cfssl that MCM depends on is kept in the [Dockerfile](./Dockerfile) as the value of the `branch` argument ( as in `--branch=v1.3.4` ) and can also be specified as an environment variable ( see `CFSSL_VERSION` below ).
 
-## Authentication
+## Authentication and authorization
 
-The Connection Manager API supports two types of authentication methods for different client types:
+Requests reach this service already authenticated and authorized by the gateway in front of it. The service's OpenAPI document is its whole authorization surface; see [authz.md](./authz.md).
 
-1. **Browser Clients (SPA)**: Cookie-based authentication with MySQL session store
-2. **Machine Clients**: JWT/Bearer token authentication via Keycloak
+With the IAM enabled (`IAM_ENABLED=true`), onboarding a DFSP records it with the IAM and creates the principals that operate it there, through the IAM's internal API:
 
-Authentication is implemented using OpenID Connect (OIDC) with PKCE for enhanced security.
+- a machine client whose id is the DFSP id, assigned `IAM_DFSP_CLIENT_ROLE` over the DFSP. `POST /dfsps/{dfspId}/credentials` gives it a fresh secret (creating the client when absent) and keeps the result in Vault for `GET`;
+- the DFSP admin's account, found by email or created and invited by the IAM, assigned `IAM_DFSP_ADMIN_ROLE` over the DFSP.
 
-See [Authentication Documentation](docs/authentication.md) for details.
+Deleting the DFSP removes it and every role over it from the IAM, retires its machine client, and retires each person left holding no role.
 
-### OpenID Connect Authentication
-
-The system uses OpenID Connect authentication, which is a provider-agnostic approach for authentication and authorization. Configure the following environment variables to enable OpenID Connect:
-
-|Environment variable|Description|Default Value
-:---|:---|:---
-|OPENID_ENABLED|Enable OpenID Connect authentication|false
-|OPENID_DISCOVERY_URL|OpenID Connect discovery URL|
-|OPENID_CLIENT_ID|Client ID for OpenID authentication|
-|OPENID_CLIENT_SECRET|Client secret for OpenID authentication|
-|OPENID_REDIRECT_URI|Redirect URI for OpenID authentication|http://mcm.localhost/api/auth/callback
-|OPENID_JWT_COOKIE_NAME|Cookie name for storing the JWT token|MCM-API_ACCESS_TOKEN
-|OPENID_EVERYONE_ROLE|Role assigned to all authenticated users|everyone
-|OPENID_MTA_ROLE|DFSP Admin role mapping for OpenID|mta
-|OPENID_PTA_ROLE|HUB Admin role mapping for OpenID|pta
-
-#### Password Reset
-
-For OpenID Connect authentication, password reset functionality is handled by the identity provider's own interface rather than through the Connection Manager API. This approach ensures compatibility with any standards-compliant OpenID provider.
+With the IAM disabled the service creates nothing in any identity system, and `POST /dfsps/{dfspId}/credentials` answers 501.
 
 ## Running the server locally
 
@@ -56,7 +38,7 @@ Once running, you can access the [Swagger UI interface](http://mcm.localhost/api
 To run them together, you can use the following setup:
 
 - Clone this repo
-- Use the `docker-compose` config in this repo to run a mysql DB, Vault, Keycloak, the WebUI and the API server
+- Use the `docker-compose` config in this repo to run a MySQL DB, Vault, the IAM simulator, the WebUI and the API server
 
 ```bash
 mkdir mojaloop
@@ -72,7 +54,7 @@ docker compose --profile full up -d --wait
 |---------|----------------------|-----------|-----------------------|
 | `ci`    | container (local)    | -         | CI/CD, running tests  |
 | `dev`   | proxy → host         | container | Local API development |
-| `full`  | container (official) | container | Full environment      |
+| `full`  | container (local)    | container | Full environment      |
 
 ```bash
 # CI/CD (builds local image, runs tests)
@@ -95,9 +77,9 @@ The stack includes Traefik for local DNS routing. All services are accessible vi
 | MCM UI | http://mcm.localhost | Web UI |
 | MCM API | http://mcm.localhost/api | API Server |
 | Vault UI | http://vault.mcm.localhost | Vault UI |
-| Keycloak | http://keycloak.mcm.localhost | Keycloak Admin Console |
-| Mailpit | http://mailpit.mcm.localhost | Email Testing UI |
 | Traefik Dashboard | http://localhost:8090 | Traefik Dashboard |
+
+Build the UI's image once with `docker build -t mojaloop/connection-manager-ui:local ../connection-manager-ui`.
 
 ### Customizing Configuration
 
@@ -112,7 +94,7 @@ DATABASE_PORT=3307
 
 This will change all services to use `*.myapp.localhost`, expose Traefik on port 8080, and MySQL on port 3307.
 
-**Note**: If port 80 is already in use, set `TRAEFIK_HTTP_PORT` to an available port (e.g., 8080). Access services at `http://ui.myapp.localhost:8080`.
+**Note**: If port 80 is already in use, set `TRAEFIK_HTTP_PORT` to an available port (e.g., 8080). Access services at `http://myapp.localhost:8080`.
 
 ### Running Multiple Instances
 
@@ -138,30 +120,18 @@ See [.env-example](./.env-example) for all available configuration options.
 :---|:---|:---
 | **MCM API server configuration**
 |PORT|MCM API HTTP port|3001
-|CLIENT_URL|MCM UI URL|http://mcm.localhost
 |SWITCH_ID|Switch identifier (required)|
 |SWITCH_FQDN|Switch FQDN|switch.example.com
 | **Docker Compose configuration**
 |COMPOSE_DOMAIN|Domain for Traefik routing (docker-compose only)|mcm.localhost
-| **Authentication features**
-|OPENID_ENABLED|Enable OpenID Connect authentication|false
-|OPENID_ENABLE_2FA|Enable two-factor authentication|false
-|OPENID_ALLOW_INSECURE|Allow insecure HTTPS for development|false
-|OPENID_DISCOVERY_URL|OpenID Connect discovery URL|
-|OPENID_CLIENT_ID|Client ID for OpenID authentication|
-|OPENID_CLIENT_SECRET|Client secret for OpenID authentication|
-|LOGIN_CALLBACK|OAuth callback URL|http://mcm.localhost/api/auth/callback
-|OPENID_AUDIENCE|JWT audience claim|connection-manager-api
-|OPENID_JWT_COOKIE_NAME|Cookie name for JWT token|MCM-API_ACCESS_TOKEN
-| **OpenID Connect groups/roles**
-|OPENID_APPLICATION_GROUP|Application group name|Application
-|OPENID_EVERYONE_GROUP|Authenticated users group|everyone
-|OPENID_MTA_GROUP|DFSP Admin group|MTA
-|OPENID_PTA_GROUP|HUB Admin group|PTA
-|OPENID_DFSP_GROUP|DFSP group|DFSP
-| **Session configuration**
-|SESSION_STORE_SECRET|Secret for encrypting session data|connection_manager_session_secret
-|SESSION_COOKIE_SAME_SITE_STRICT|Use strict SameSite cookie setting|true
+| **IAM integration**
+|IAM_ENABLED|Record DFSPs with the IAM and create their principals there; off, nothing IAM-related happens|false
+|IAM_AUTO_CREATE_ACCOUNTS|Create and assign a new DFSP's machine client and admin account when it is onboarded|true
+|IAM_PROVISIONING_URL|The IAM's internal API, reached by network rule, no credentials|http://iam-provisioning.ory.svc.cluster.local
+|IAM_DFSP_RESOURCE_NAME|The resource name DFSPs are recorded under|participant
+|IAM_DFSP_ADMIN_ROLE|Role the DFSP admin is assigned over the DFSP; empty assigns none|
+|IAM_DFSP_CLIENT_ROLE|Role the DFSP machine client is assigned over the DFSP; empty assigns none|
+|IAM_DFSP_CLIENT_AUDIENCE|Token audience of the DFSP machine client|connection-manager-api
 | **Database configuration**
 |DATABASE_HOST|MySQL host|localhost
 |DATABASE_PORT|MySQL port (also used for docker-compose host mapping)|3306
@@ -195,22 +165,15 @@ See [.env-example](./.env-example) for all available configuration options.
 | **Support for self-signed certificates**
 |EXTRA_CERTIFICATE_CHAIN_FILE_NAME|Extra trusted server certificate chain file name|
 |EXTRA_ROOT_CERT_FILE_NAME|Extra trusted server root certificate file name|
-| **Keycloak Integration**
-|KEYCLOAK_ENABLED|Enable Keycloak integration for DFSP account creation|false
-|KEYCLOAK_BASE_URL|Base URL of the Keycloak server|http://keycloak.mcm.localhost
-|KEYCLOAK_DISCOVERY_URL|OpenID Connect discovery URL for Keycloak|http://keycloak.mcm.localhost/realms/dfsps/.well-known/openid-configuration
-|KEYCLOAK_ADMIN_CLIENT_ID|Client ID for Keycloak admin operations|connection-manager-client
-|KEYCLOAK_ADMIN_CLIENT_SECRET|Client secret for Keycloak admin operations|
-|KEYCLOAK_DFSPS_REALM|Keycloak realm for DFSP accounts|dfsps
-|KEYCLOAK_AUTO_CREATE_ACCOUNTS|Automatically create Keycloak accounts when DFSPs are created|false
 | **Other features**
 |DFSP_WATCHER_ENABLED|Enable DFSP watcher service|false
 
 ## Testing
 
-- Unit testing:
+- Unit and integration testing:
   - run `npm run backend:start` as a pre-requisite to `npm test`
   - run `npm test`. The tests are implemented using `jest`. If you need some test certificates, see the [test resources readme](./test/resources/README.md)
+  - the IAM is the IAM's own simulator (`@mojaloop/authz-sim`), run in a process of its own with this service's API document and the deployment in [test/iam/objects.yaml](./test/iam/objects.yaml); tests read back what the service did only through the IAM's public API and token endpoint
 - Smoke testing ( `zsh` script ): run the [cmd-line-tester.sh](./scripts/cmd-line-tester.sh) script from a tmp directory
 - swagger: see "running the server" below
 

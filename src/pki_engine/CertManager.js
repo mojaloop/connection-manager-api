@@ -43,27 +43,16 @@ class CertManager {
         }
       }
     ];
-    const options = {
-      headers: { 'Content-type': this.k8s.PatchStrategy.JsonPatch },
-    };
-
     this.logger.debug({
       message: 'Renewing cert',
       patch,
-      options,
       name: this.serverCertSecretName,
       namespace: this.serverCertSecretNamespace
     });
 
     return this.k8sApi.patchNamespacedSecret(
-      this.serverCertSecretName,
-      this.serverCertSecretNamespace,
-      patch,
-      undefined,
-      undefined,
-      undefined,
-      undefined,
-      options
+      { name: this.serverCertSecretName, namespace: this.serverCertSecretNamespace, body: patch },
+      this.k8s.setHeaderOptions('Content-Type', this.k8s.PatchStrategy.JsonPatch)
     )
       .then(() => { this.logger.info('Server cert renewal successful'); })
       .catch((err) => { this.logger.error('Error renewing server cert: ', err); });

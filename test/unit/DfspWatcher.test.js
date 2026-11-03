@@ -93,6 +93,30 @@ describe('DfspWatcher Tests -->', () => {
     expect(mockGaugeSet).toHaveBeenCalledWith({ dfsp: 'dfsp2' }, 0);
   });
 
+  test('stopWatching during a ping round waits for the round and schedules no further one', async () => {
+    jest.useFakeTimers({ doNotFake: ['nextTick', 'setImmediate', 'queueMicrotask'] });
+    let answerFind;
+    const dfspModel = createMockDfspModel({
+      findWatchedDfspIds: jest.fn(() => new Promise((resolve) => { answerFind = () => resolve(['dfsp1']); })),
+    });
+    mockAxios.onPost()
+      .reply(200, { pingStatus: PingStatus.SUCCESS });
+    const watcher = createDfspWatcher({ dfspModel });
+
+    const started = watcher.start();
+    let stopped = false;
+    const stopping = watcher.stopWatching().then(() => { stopped = true; });
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(stopped).toBe(false);
+
+    answerFind();
+    await Promise.all([started, stopping]);
+
+    expect(dfspModel.updatePingStatus).toHaveBeenCalledTimes(1);
+    expect(jest.getTimerCount()).toBe(0);
+    jest.useRealTimers();
+  });
+
   test('should ping all watched dfsps', async () => {
     const dfspModel = createMockDfspModel({
       findWatchedDfspIds: jest.fn().mockResolvedValue(['dfsp1', 'dfsp2']),

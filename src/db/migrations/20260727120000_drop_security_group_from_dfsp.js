@@ -25,9 +25,6 @@
  ******/
 
 /**
- * A DFSP's operators are the identities related to it in Keto, so the group
- * name a DFSP once carried grants nothing and is not read anywhere.
- *
  * @param { import("knex").Knex } knex
  * @returns { Promise<void> }
  */

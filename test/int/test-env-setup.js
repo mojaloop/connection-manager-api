@@ -11,7 +11,6 @@ process.env.LOG_LEVEL = 'warn';
 
 // Server
 process.env.PORT = '3001';
-process.env.CLIENT_URL = 'http://mcm.localhost/';
 
 // Database
 process.env.DATABASE_HOST = 'localhost';
@@ -31,25 +30,8 @@ process.env.VAULT_PKI_SERVER_ROLE = 'example.com';
 // Switch/Hub
 process.env.SWITCH_ID = 'switch';
 
-// IAM (Ory: Hydra + Kratos + Keto)
-process.env.IAM_ENABLED = 'true';
-process.env.IAM_AUTO_CREATE_ACCOUNTS = 'true';
-
-process.env.HYDRA_PUBLIC_URL = 'http://hydra.mcm.localhost';
-process.env.HYDRA_ADMIN_URL = 'http://hydra-admin.mcm.localhost';
-process.env.HYDRA_AUDIENCE = 'connection-manager-api';
-
-process.env.KRATOS_PUBLIC_URL = 'http://kratos.mcm.localhost';
-process.env.KRATOS_ADMIN_URL = 'http://kratos-admin.mcm.localhost';
-process.env.KRATOS_IDENTITY_SCHEMA_ID = 'default';
-
-process.env.KETO_READ_URL = 'http://keto-read.mcm.localhost';
-process.env.KETO_WRITE_URL = 'http://keto-write.mcm.localhost';
-
-process.env.IAM_PROVISIONING_URL = 'http://iam.mcm.localhost';
-process.env.IAM_DFSP_RESOURCE_NAME = 'Participant';
-process.env.IAM_DFSP_ADMIN_ROLE = 'dfsp-operator';
-process.env.IAM_DFSP_CLIENT_ROLE = 'dfsp-client';
+// IAM
+process.env.IAM_ENABLED = 'false';
 
 // Features
 process.env.DFSP_WATCHER_ENABLED = 'false';

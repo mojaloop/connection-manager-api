@@ -40,6 +40,8 @@ const { PingStatus, PingStatusNumber, PingStatusToError, PingStep } = require('.
 
 class DfspWatcher {
   #timer = null;
+  #round = Promise.resolve();
+  #watching = false;
 
   /** @param {DfspWatcherDeps} deps */
   constructor(deps) {
@@ -63,20 +65,25 @@ class DfspWatcher {
   }
 
   async start() {
+    this.#watching = true;
     await this.startWatching();
     this.log.info(`DfspWatcher is started`);
   }
 
   async startWatching() {
-    await this.pingWatchedDfsps();
+    this.#round = this.pingWatchedDfsps();
+    await this.#round;
+    if (!this.#watching) return;
     const interval = this.config.get('pingInterval');
     this.#timer = setTimeout(() => this.startWatching(), interval * 1000);
     this.log.verbose(`next pingWatchedDfsps is scheduled in ${interval} seconds...`);
   }
 
   async stopWatching() {
+    this.#watching = false;
     clearTimeout(this.#timer);
     this.#timer = null;
+    await this.#round;
     this.log.info(`stopWatching is done`);
   }
 

@@ -27,6 +27,8 @@
 
 const Hapi = require('@hapi/hapi');
 
+const NO_STOP_TIMEOUT_MS = 2 ** 31 - 1;
+
 /**
  * @typedef {Object} MetricsServerDeps
  * @prop {MetricsServerConfig} config - Configuration for MetricsServer
@@ -68,7 +70,7 @@ class MetricsServer {
   }
 
   async stop () {
-    this.#server.stop();
+    await this.#server.stop({ timeout: NO_STOP_TIMEOUT_MS });
     this.#isStarted = false;
     this.log.info(`MetricsServer is stopped`);
   }

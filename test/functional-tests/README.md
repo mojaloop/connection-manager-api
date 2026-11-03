@@ -8,28 +8,21 @@ Functional tests run against a full stack environment managed by Docker Compose.
 |---------------|------------------------------|------------------------------------|
 | MCM API       | http://mcm.localhost/api     | Connection Manager API             |
 | MCM UI        | http://mcm.localhost         | Web UI (dev/full profiles only)    |
-| Keycloak      | http://keycloak.mcm.localhost| Identity provider                  |
-| Mailpit       | http://mailpit.mcm.localhost | Email testing (captures all emails)|
 | Vault         | http://vault.mcm.localhost   | PKI and secrets management         |
 | MySQL         | localhost:3306               | Database                           |
 | Traefik       | localhost:8090               | Reverse proxy dashboard            |
 
 ### Test Helpers
 
-- `util/api-helper.ts` - HTTP client with OAuth support (cookie and client credentials)
-- `util/keycloak-helper.ts` - Keycloak interactions (password setup flow)
-- `util/mailpit-helper.ts` - Email retrieval and parsing
+- `util/api-helper.ts` - HTTP client that sends every request as the caller it is given
 
 ## Configuration
 
 Configuration is managed via `test-env-setup.js` (loaded automatically by Jest):
 
-| Environment Variable  | Description                  | Default                      |
-| --------------------- | ---------------------------- | ---------------------------- |
-| APP_ENDPOINT          | Endpoint for MCM API         | http://mcm.localhost/api     |
-| APP_OAUTH_USERNAME    | OAuth username for login     | admin                        |
-| APP_OAUTH_PASSWORD    | OAuth password for login     | admin                        |
-| MAILPIT_ENDPOINT      | Endpoint for Mailpit service | http://mailpit.mcm.localhost |
+| Environment Variable  | Description                          | Default                                 |
+| --------------------- | ------------------------------------ | --------------------------------------- |
+| APP_ENDPOINT          | Endpoint for MCM API                 | http://mcm.localhost/api                |
 
 ## Executing Tests
 
@@ -61,23 +54,16 @@ npm test
 
 Tests are located in `tests/` directory. Each test file should:
 
-1. Use `ApiHelper` for API requests with authentication
-2. Use `MailpitHelper` if testing email flows
-3. Use `KeycloakHelper` if testing user onboarding flows
+1. Use `ApiHelper` for API requests, made as a caller from `@mojaloop/authz/testing`
 
 Example structure:
 ```typescript
+import { caller } from '@mojaloop/authz/testing';
 import { ApiHelper, MethodEnum } from '../util/api-helper';
 import Config from '../util/config';
 
 describe('Feature Tests', () => {
-  const apiHelper = new ApiHelper({
-    login: {
-      username: Config.username,
-      password: Config.password,
-      baseUrl: Config.mcmEndpoint
-    }
-  });
+  const apiHelper = new ApiHelper(caller().reachingAll('dfsps').request);
 
   test('should do something', async () => {
     const response = await apiHelper.sendRequest({
