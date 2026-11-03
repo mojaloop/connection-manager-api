@@ -15,6 +15,7 @@
  *  limitations under the License.                                            *
  ******************************************************************************/
 
+const { Forbidden } = require('@mojaloop/authz');
 const utils = require('../utils/writer.js');
 const JWSCertsService = require('../service/JWSCertsService');
 const { getRequestData } = require('../utils/request.js');
@@ -23,11 +24,13 @@ const { getRequestData } = require('../utils/request.js');
  * The DFSP a request is made on behalf of, read from the gateway-supplied
  * visible set. A caller standing for exactly one DFSP is that DFSP; a hub
  * caller sees every DFSP and stands for none, so the entries it reports carry
- * no source.
+ * no source; a caller limited to several DFSPs names no one source.
  */
 const callerDfspId = (req) => {
   const dfsps = req.authz(req, 'dfsps');
-  return dfsps.restricted && dfsps.ids.length === 1 ? dfsps.ids[0] : undefined;
+  if (!dfsps.restricted) return undefined;
+  if (dfsps.ids.length !== 1) throw new Forbidden(`external JWS certificates come from one DFSP; this caller reaches ${dfsps.ids.length}`);
+  return dfsps.ids[0];
 };
 
 exports.createDfspJWSCerts = (req, res, next) => {
